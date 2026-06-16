@@ -1,0 +1,18 @@
+motor_type: AK80_6_V1p1
+
+kp: 20.0
+kd: 1.0
+
+interfaces:
+  - { id: 98, index: 0 } # SocketCAN command frame
+  - { id: 1,  index: 0, size: 2, type: u16 } # p_des, 16 bits
+  - { id: 2,  index: 2, size: 2, type: u16 } # v_des, 12 bits
+  - { id: 9,  index: 3, size: 2, type: u16 } # kp, 12 bits
+  - { id: 10, index: 5, size: 2, type: u16 } # kd, 12 bits
+  - { id: 3,  index: 6, size: 2, type: u16 } # tau_ff, 12 bits
+  - { id: 99, index: 0 } # SocketCAN status frame
+  - { id: 6,  index: 1, size: 2, type: u16 } # position, 16 bits
+  - { id: 7,  index: 3, size: 2, type: u16 } # velocity, 12 bits
+  - { id: 8,  index: 4, size: 2, type: u16 } # torque/current, 12 bits
+  - { id: 11, index: 6, size: 1, type: u8  } # temperature
+  - { id: 5,  index: 7, size: 1, type: u8  } # error

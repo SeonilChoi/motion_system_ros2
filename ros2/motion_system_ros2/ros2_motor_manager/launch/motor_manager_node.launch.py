@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('ros2_motor_manager')
-    default_config = os.path.join(pkg_share, 'config', 'example_canopen_zeroerr.yaml')
+    default_config = os.path.join(pkg_share, 'config', 'example.yaml')
 
     config_file_arg = DeclareLaunchArgument(
         'config_file',

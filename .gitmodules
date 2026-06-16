@@ -1,6 +1,10 @@
 [submodule "lib/motor_manager"]
     path = lib/motor_manager
-    url = https://github.com/SeonilChoi/MOTOR-MANAGER.git
+    url = https://github.com/SeonilChoi/motor_manager.git
+
+[submodule "lib/robot_manager"]
+    path = lib/robot_manager
+    url = https://github.com/SeonilChoi/robot_manager.git
 
 [submodule "ros2/iahrs_driver_ros2"]
     path = ros2/iahrs_driver_ros2

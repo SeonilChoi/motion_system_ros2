@@ -1,0 +1,32 @@
+period: 1000000
+
+masters:
+  - id: 0
+    type: socketcan
+    number_of_slaves: 1
+    can_interface_index: 0
+    can_bitrate: 1000000
+    slaves:
+      - controller_index: 0
+        driver_id: 0
+        node_id: 1
+        profile_mode: 0
+
+drivers:
+  - id: 0
+    pulse_per_revolution: 1
+    rated_torque: 12.0
+    unit_torque: 1.0
+    lower: -12.5
+    upper: 12.5
+    speed: 22.5
+    acceleration: 0.0
+    deceleration: 0.0
+    profile_velocity: 0.0
+    profile_acceleration: 0.0
+    profile_deceleration: 0.0
+    profile_position_value: 0
+    profile_velocity_value: 0
+    profile_torque_value: 0
+    type: cubemars
+    param_file: ../param
