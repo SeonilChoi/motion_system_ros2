@@ -74,7 +74,7 @@ void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
         msg->errorcode.size(),
         msg->position.size(),
         msg->velocity.size(),
-        msg->torque.size(),
+        msg->effort.size(),
         static_cast<size_t>(motor_interface::MAX_CONTROLLER_SIZE),
     });
     //const uint8_t size = motor_manager_->number_of_controllers();
@@ -98,7 +98,7 @@ void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
         motor_frame[i].errorcode = msg->errorcode[i];
         motor_frame[i].position = msg->position[i];
         motor_frame[i].velocity = msg->velocity[i];
-        motor_frame[i].torque = msg->torque[i];
+        motor_frame[i].effort = msg->effort[i];
     }
 
     motor_manager_->write(motor_frame, static_cast<uint8_t>(size));
@@ -129,7 +129,7 @@ void MotorManagerNode::timer_callback()
     msg.errorcode.resize(n);
     msg.position.resize(n);
     msg.velocity.resize(n);
-    msg.torque.resize(n);
+    msg.effort.resize(n);
 
     for (uint8_t i = 0; i < n; i++) {
         msg.controller_index[i] = status[i].controller_index;
@@ -138,7 +138,7 @@ void MotorManagerNode::timer_callback()
         msg.errorcode[i] = status[i].errorcode;
         msg.position[i] = status[i].position;
         msg.velocity[i] = status[i].velocity;
-        msg.torque[i] = status[i].torque;
+        msg.effort[i] = status[i].effort;
     }
 
     motor_status_publisher_->publish(msg);

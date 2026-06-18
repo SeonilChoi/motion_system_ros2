@@ -6,4 +6,4 @@ uint16[] statusword
 uint16[] errorcode
 float64[] position
 float64[] velocity
-float64[] torque
+float64[] effort

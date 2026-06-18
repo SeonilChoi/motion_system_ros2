@@ -365,7 +365,7 @@ private:
     msg.errorcode.assign(n, 0);
     msg.position.assign(n, 0.0);
     msg.velocity.assign(n, 0.0);
-    msg.torque.assign(n, 0.0);
+    msg.effort.assign(n, 0.0);
 
     for (std::size_t i = 0; i < n; ++i) {
       msg.controller_index[i] = motor_infos_[i].controller_index;
@@ -415,7 +415,7 @@ private:
       case 2: {
         msg.number_of_target_interfaces[idx] = 1;
         msg.target_interface_id[idx].data = std::vector<int8_t>{3};
-        msg.torque[idx] = scale_fader(
+        msg.effort[idx] = scale_fader(
           fader_value, -motor.driver.rated_torque, motor.driver.rated_torque);
         break;
       }

@@ -85,7 +85,7 @@ class MotorManagerWidget(QMainWindow):
         self._is_visible = False
         self._positions = []
         self._velocities = []
-        self._torques = []
+        self._efforts = []
 
         self._motor_status_subscriber = self._node.create_subscription(
             MotorStatus,
@@ -238,7 +238,7 @@ class MotorManagerWidget(QMainWindow):
         msg.errorcode = [0] * n_slaves
         msg.position = [0.0] * n_slaves
         msg.velocity = [0.0] * n_slaves
-        msg.torque = [0.0] * n_slaves
+        msg.effort = [0.0] * n_slaves
         return msg, n_slaves
 
     def _set_current_value_label(self, profile_mode, value):
@@ -288,7 +288,7 @@ class MotorManagerWidget(QMainWindow):
         self._is_visible = False
         self._positions = []
         self._velocities = []
-        self._torques = []
+        self._efforts = []
         self._add_select_motor_menu()
 
     def _on_visible_button_clicked(self):
@@ -318,7 +318,7 @@ class MotorManagerWidget(QMainWindow):
             msg.target_interface_id[self._current_controller_index] = Int8MultiArray(
                 data=[ID_TARGET_TORQUE]
             )
-            msg.torque[self._current_controller_index] = value
+            msg.effort[self._current_controller_index] = value
             
         self._motor_command_publisher.publish(msg)
 
@@ -346,10 +346,10 @@ class MotorManagerWidget(QMainWindow):
             self._max_value_label.setText(f"{int(upper)}")
 
         elif motor_info["profile_mode"] == 2:
-            torque = int(motor_info["rated_torque"])
-            lower = -int(torque)
-            upper = int(torque)
-            current_value = int(self._motor_status.torque[index])
+            effort_limit = int(motor_info["rated_torque"])
+            lower = -int(effort_limit)
+            upper = int(effort_limit)
+            current_value = int(self._motor_status.effort[index])
             self._max_value_label.setText(f"{int(upper)}")
             
         self._command_slider.setRange(lower, upper)
@@ -373,23 +373,23 @@ class MotorManagerWidget(QMainWindow):
             idx = motor_info["controller_index"]
             pos = [raw[idx] for raw in self._positions]
             vel = [raw[idx] for raw in self._velocities]
-            tau = [raw[idx] for raw in self._torques]
+            tau = [raw[idx] for raw in self._efforts]
 
             self._motor_infos_plot_widget.plot(pos, pen=pg.mkPen(color='b', width=3), name=f'{motor_info["alias"]}_position')
             self._motor_infos_plot_widget.plot(vel, pen=pg.mkPen(color='g', width=3), name=f'{motor_info["alias"]}_velocity')
-            self._motor_infos_plot_widget.plot(tau, pen=pg.mkPen(color='r', width=3), name=f'{motor_info["alias"]}_torque')
+            self._motor_infos_plot_widget.plot(tau, pen=pg.mkPen(color='r', width=3), name=f'{motor_info["alias"]}_effort')
 
 
     def motor_status_callback(self, msg):
         self._motor_status = msg
         self._positions.append(msg.position)
         self._velocities.append(msg.velocity)
-        self._torques.append(msg.torque)
+        self._efforts.append(msg.effort)
 
         if len(self._positions) > 50:
             self._positions.pop(0)
             self._velocities.pop(0)
-            self._torques.pop(0)
+            self._efforts.pop(0)
 
     def shutdown_widget(self):
         self._update_timer.stop()
