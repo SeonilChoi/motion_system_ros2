@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(rqt_motion_system)
+project(midi_motion_control CXX)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -7,10 +7,33 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_python REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(midi_msgs REQUIRED)
+find_package(motor_status_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
+
+add_executable(midi_motion_control_node
+  src/midi_motion_control_node.cpp
+)
+ament_target_dependencies(midi_motion_control_node
+  rclcpp
+  std_msgs
+  midi_msgs
+  motor_status_msgs
+)
+target_link_libraries(midi_motion_control_node
+  yaml-cpp
+)
+target_compile_features(midi_motion_control_node PUBLIC cxx_std_17)
+
+install(TARGETS midi_motion_control_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -23,24 +46,5 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-ament_python_install_package(rqt_motion_system
-  PACKAGE_DIR src/${PROJECT_NAME})
-
-install(FILES
-  plugin.xml
-  DESTINATION share/${PROJECT_NAME}
-)
-
-install(DIRECTORY
-  resource
-  launch
-  DESTINATION share/${PROJECT_NAME}
-)
-
-install(PROGRAMS
-  scripts/run_rqt
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 ament_package()

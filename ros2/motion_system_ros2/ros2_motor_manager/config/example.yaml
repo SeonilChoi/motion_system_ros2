@@ -72,6 +72,22 @@ masters:
         node_id: 2
         profile_mode: 0
 
+  - id: 3
+    type: socketcan
+    number_of_slaves: 2
+    can_interface_index: 0
+    can_bitrate: 1000000
+    slaves:
+      - controller_index: 8
+        driver_id: 4
+        node_id: 3
+        profile_mode: 0
+
+      - controller_index: 9
+        driver_id: 4
+        node_id: 4
+        profile_mode: 0
+
 drivers:
   - id: 0
     pulse_per_revolution: 8388608
@@ -144,3 +160,23 @@ drivers:
     profile_torque_value: 0
     type: dynamixel
     param_file: ../param/dynamixel/xm540_w270.yaml
+
+  - id: 4
+    # CubeMars SocketCAN uses the MIT 16-bit position field directly.
+    # This common field is kept for compatibility and is not used by cubemars_driver.
+    pulse_per_revolution: 65536
+    rated_torque: 12.0
+    unit_torque: 1.0
+    lower: -1.0
+    upper: 1.0
+    speed: 22.5
+    acceleration: 0.0
+    deceleration: 0.0
+    profile_velocity: 0.0
+    profile_acceleration: 0.0
+    profile_deceleration: 0.0
+    profile_position_value: 0
+    profile_velocity_value: 0
+    profile_torque_value: 0
+    type: cubemars
+    param_file: ../param

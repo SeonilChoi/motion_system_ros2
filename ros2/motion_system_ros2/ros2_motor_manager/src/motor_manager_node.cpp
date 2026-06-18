@@ -65,15 +65,30 @@ MotorManagerNode::~MotorManagerNode()
 
 void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
 {
-    const size_t size = msg->controller_index.size();
+    const size_t size = std::min({
+        msg->controller_index.size(),
+        msg->number_of_target_interfaces.size(),
+        msg->target_interface_id.size(),
+        msg->controlword.size(),
+        msg->statusword.size(),
+        msg->errorcode.size(),
+        msg->position.size(),
+        msg->velocity.size(),
+        msg->torque.size(),
+        static_cast<size_t>(motor_interface::MAX_CONTROLLER_SIZE),
+    });
     //const uint8_t size = motor_manager_->number_of_controllers();
     
     motor_interface::motor_frame_t motor_frame[motor_interface::MAX_CONTROLLER_SIZE] = {};
 
-    for (uint8_t i = 0; i < size; i++) {
-        motor_frame[i].number_of_target_interfaces = msg->number_of_target_interfaces[i];
+    for (uint8_t i = 0; i < static_cast<uint8_t>(size); i++) {
+        const size_t n_if = std::min({
+            static_cast<size_t>(msg->number_of_target_interfaces[i]),
+            static_cast<size_t>(motor_interface::MAX_INTERFACE_SIZE),
+            msg->target_interface_id[i].data.size(),
+        });
+        motor_frame[i].number_of_target_interfaces = static_cast<uint8_t>(n_if);
 
-        const uint8_t n_if = motor_frame[i].number_of_target_interfaces;
         for (uint8_t j = 0; j < n_if; j++) {
             motor_frame[i].target_interface_id[j] = msg->target_interface_id[i].data[j];
         }
@@ -86,7 +101,7 @@ void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
         motor_frame[i].torque = msg->torque[i];
     }
 
-    motor_manager_->write(motor_frame, size);
+    motor_manager_->write(motor_frame, static_cast<uint8_t>(size));
 }
 
 void MotorManagerNode::user_command_callback(const Empty::SharedPtr msg)

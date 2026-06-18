@@ -23,7 +23,7 @@
       </size>
     </property>
     <property name="windowTitle">
-      <string>Motion System</string>
+      <string>Motion Control</string>
     </property>
     <widget class="QWidget" name="CentralWidget">
       <property name="geometry">

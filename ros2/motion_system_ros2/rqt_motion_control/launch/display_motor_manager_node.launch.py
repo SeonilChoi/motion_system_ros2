@@ -27,10 +27,10 @@ def generate_launch_description():
         }.items(),
     )
 
-    motion_system_controller = Node(
-        package='rqt_motion_system',
+    motion_control = Node(
+        package='rqt_motion_control',
         executable='run_rqt',
-        name='motion_system_controller',
+        name='motion_control',
         output='screen',
         arguments=['--force-discover'],
         parameters=[{
@@ -41,5 +41,5 @@ def generate_launch_description():
     return LaunchDescription([
         motor_config_file_arg,
         motor_manager_launch,
-        motion_system_controller,
+        motion_control,
     ])

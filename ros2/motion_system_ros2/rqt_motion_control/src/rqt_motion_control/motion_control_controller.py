@@ -1,12 +1,12 @@
 from rqt_gui_py.plugin import Plugin
 
-from rqt_motion_system.motor_manager_widget import MotorManagerWidget
+from rqt_motion_control.motor_manager_widget import MotorManagerWidget
 
-class MotionSystemController(Plugin):
+class MotionControlController(Plugin):
     def __init__(self, context):
         super().__init__(context)
 
-        self.setObjectName('MotionSystemController')
+        self.setObjectName('MotionControlController')
         
         self.widget = MotorManagerWidget(context.node)
 
@@ -17,5 +17,5 @@ class MotionSystemController(Plugin):
         context.add_widget(self.widget)
 
     def shutdown_plugin(self):
-        print('MotionSystemController shutdown')
+        print('MotionControlController shutdown')
         self.widget.shutdown_widget()

@@ -1,20 +1,19 @@
-motor_type: AK45_36_KV80
+motor_type: AK10_30_cubemars
 
 kp: 20.0
-kd: 1.0
+kd: 5.0
 
 # MIT protocol position encoding range. This is not the user command limit.
 # The -1..1 rad command limit is configured as lower/upper in the driver config.
 p_min: -12.5
 p_max: 12.5
-v_min: -22.5
-v_max: 22.5
-t_min: -12.0
-t_max: 12.0
+v_min: -45.0
+v_max: 45.0
+t_min: -18.0
+t_max: 18.0
 
-# Extended status frames observed as 0x2900 + node_id encode position in the
-# first two payload bytes. The AK45-36 KV80 manual says the single-turn absolute
-# encoder RAW range is 0..16383, so 1 count = 2*pi/16384 rad.
+# Some CubeMars/T-Motor firmwares reply with CAN ID 0x2900 + node_id and put
+# node_id at byte 0, then signed position/velocity/current fields after it.
 servo_position_scale: 0.0003834951969714103
 servo_velocity_scale: 0.001
 servo_current_scale: 0.01

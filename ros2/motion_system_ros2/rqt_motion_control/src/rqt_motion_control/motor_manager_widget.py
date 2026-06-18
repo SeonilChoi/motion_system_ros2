@@ -30,8 +30,14 @@ from std_msgs.msg import Int8MultiArray
 import rclpy
 
 
+ID_CONTROLWORD = 0
+ID_TARGET_POSITION = 1
+ID_TARGET_VELOCITY = 2
+ID_TARGET_TORQUE = 3
+
 CW_NEW_SET_POINT_ZEROERR = 0x103F
 CW_NEW_SET_POINT_MINAS = 0x003F
+CW_SOCKETCAN_SET_POINT = 0x0001
 
 RAD_2_DEG = 180.0 / math.pi
 DEG_2_RAD = math.pi / 180.0
@@ -52,7 +58,7 @@ class MotorManagerWidget(QMainWindow):
         super().__init__()
 
         ui_file_path = os.path.join(
-            get_package_share_directory('rqt_motion_system'),
+            get_package_share_directory('rqt_motion_control'),
             'resource',
             'base.ui',
         )
@@ -247,6 +253,36 @@ class MotorManagerWidget(QMainWindow):
             self._cur_val_label.setText(f"Current Value:  {int(value)} Nm")
 
 
+    def _driver_type(self, motor_info):
+        return str(motor_info.get('type') or '').lower()
+
+    def _controlword_for_driver(self, driver_type):
+        if driver_type == 'zeroerr':
+            return int(CW_NEW_SET_POINT_ZEROERR)
+        if driver_type == 'minas':
+            return int(CW_NEW_SET_POINT_MINAS)
+        if driver_type == 'cubemars':
+            return int(CW_SOCKETCAN_SET_POINT)
+
+        self._node.get_logger().warning(
+            f"Unknown driver type '{driver_type}'; using zeroerr set-point controlword."
+        )
+        return int(CW_NEW_SET_POINT_ZEROERR)
+
+    def _set_position_command(self, msg, motor_info, index, value):
+        driver_type = self._driver_type(motor_info)
+        if driver_type == 'dynamixel':
+            msg.number_of_target_interfaces[index] = 1
+            msg.target_interface_id[index] = Int8MultiArray(data=[ID_TARGET_POSITION])
+        else:
+            msg.number_of_target_interfaces[index] = 2
+            msg.target_interface_id[index] = Int8MultiArray(
+                data=[ID_CONTROLWORD, ID_TARGET_POSITION]
+            )
+            msg.controlword[index] = self._controlword_for_driver(driver_type)
+
+        msg.position[index] = value / 100.0 * DEG_2_RAD
+
     def _on_reset_button_clicked(self):
         self._current_controller_index = None
         self._is_visible = False
@@ -266,22 +302,22 @@ class MotorManagerWidget(QMainWindow):
         
         motor_info = self._motor_infos[self._current_controller_index]
         if motor_info['profile_mode'] == 0:
-            msg.number_of_target_interfaces[self._current_controller_index] = 2
-            msg.target_interface_id[self._current_controller_index] = Int8MultiArray(data=[0, 1])
-            if motor_info['type'] == 'zeroerr':
-                msg.controlword[self._current_controller_index] = int(CW_NEW_SET_POINT_ZEROERR)
-            elif motor_info['type'] == 'minas':
-                msg.controlword[self._current_controller_index] = int(CW_NEW_SET_POINT_MINAS)
-            msg.position[self._current_controller_index] = value / 100.0 * DEG_2_RAD
+            self._set_position_command(
+                msg, motor_info, self._current_controller_index, value
+            )
 
         elif motor_info['profile_mode'] == 1:
             msg.number_of_target_interfaces[self._current_controller_index] = 1
-            msg.target_interface_id[self._current_controller_index] = Int8MultiArray(data=[2])
+            msg.target_interface_id[self._current_controller_index] = Int8MultiArray(
+                data=[ID_TARGET_VELOCITY]
+            )
             msg.velocity[self._current_controller_index] = value * RPM_2_RAD
 
         elif motor_info['profile_mode'] == 2:
             msg.number_of_target_interfaces[self._current_controller_index] = 1
-            msg.target_interface_id[self._current_controller_index] = Int8MultiArray(data=[3])
+            msg.target_interface_id[self._current_controller_index] = Int8MultiArray(
+                data=[ID_TARGET_TORQUE]
+            )
             msg.torque[self._current_controller_index] = value
             
         self._motor_command_publisher.publish(msg)
