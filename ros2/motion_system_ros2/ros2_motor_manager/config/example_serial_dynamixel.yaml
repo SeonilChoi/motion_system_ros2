@@ -6,8 +6,6 @@ masters:
     number_of_slaves: 1
     serial_port: /dev/ttyUSB0
     serial_baudrate: 1000000
-    serial_timeout_ms: 100
-    serial_runtime_timeout_ms: 5
     slaves:
       - controller_index: 0
         driver_id: 0
