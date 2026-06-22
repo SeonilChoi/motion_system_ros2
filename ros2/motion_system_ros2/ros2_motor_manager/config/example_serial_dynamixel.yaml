@@ -9,24 +9,24 @@ masters:
     slaves:
       - controller_index: 0
         driver_id: 0
-        node_id: 1
-        profile_mode: 0 # 0: Position Mode, 1: Velocity Mode, 2: Torque Mode
+        can_id: 1
+        profile_mode: 0 # 0: Position Mode, 1: Velocity Mode, 2: Effort Mode
 
 drivers:
   - id: 0
     pulse_per_revolution: 4096
-    rated_torque: 1193.0
-    unit_torque: 1.0
-    lower: -3.14159265
-    upper: 3.14159265
-    speed: 6.0
-    acceleration: 20.0
-    deceleration: 20.0
-    profile_velocity: 3.0
-    profile_acceleration: 20.0
-    profile_deceleration: 20.0
+    rated_effort: 1193.0
+    unit_effort: 1.0
+    lower: -180.0
+    upper: 180.0
+    speed: 343.7746770785
+    acceleration: 1145.9155902616
+    deceleration: 1145.9155902616
+    profile_velocity: 171.8873385392
+    profile_acceleration: 1145.9155902616
+    profile_deceleration: 1145.9155902616
     profile_position_value: 3
     profile_velocity_value: 1
-    profile_torque_value: 0
+    profile_effort_value: 0
     type: dynamixel
     param_file: ../param/dynamixel/xm430_w350.yaml

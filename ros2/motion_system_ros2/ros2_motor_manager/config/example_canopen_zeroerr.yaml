@@ -8,8 +8,8 @@ masters:
     slaves:
       - controller_index: 0
         driver_id: 0
-        node_id: 1
-        profile_mode: 0 # 0: Position Mode, 1: Velocity Mode, 2: Torque Mode
+        can_id: 1
+        profile_mode: 0 # 0: Position Mode, 1: Velocity Mode, 2: Effort Mode
 
   - id: 1
     type: ethercat
@@ -22,24 +22,24 @@ masters:
         position: 0
         vendor_id: 0x5a65726f
         product_id: 0x00029252
-        profile_mode: 0 # 0: Position Mode, 1: Velocity Mode, 2: Torque Mode
+        profile_mode: 0 # 0: Position Mode, 1: Velocity Mode, 2: Effort Mode
 
 drivers:
   - id: 0
     pulse_per_revolution: 524288
-    rated_torque: 25.0
-    unit_torque: 0.1
-    lower: -1.0
-    upper: 1.0
+    rated_effort: 25.0
+    unit_effort: 0.001
+    lower: -57.2957795131
+    upper: 57.2957795131
     speed: 2000
-    acceleration: 1.5
-    deceleration: 1.5
-    profile_velocity: 1.5
-    profile_acceleration: 1.5
-    profile_deceleration: 1.5
+    acceleration: 85.9436692696
+    deceleration: 85.9436692696
+    profile_velocity: 85.9436692696
+    profile_acceleration: 85.9436692696
+    profile_deceleration: 85.9436692696
     profile_position_value: 1
     profile_velocity_value: 3
-    profile_torque_value: 4
+    profile_effort_value: 4
     type: zeroerr
     param_file: ../param
   

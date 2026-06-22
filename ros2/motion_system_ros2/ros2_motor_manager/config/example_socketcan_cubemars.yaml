@@ -9,22 +9,22 @@ masters:
     slaves:
       - controller_index: 0
         driver_id: 0
-        node_id: 1
+        can_id: 1
         profile_mode: 0
       
       - controller_index: 1 
         driver_id: 0
-        node_id: 2
+        can_id: 2
         profile_mode: 0
 
       - controller_index: 2
         driver_id: 0
-        node_id: 3
+        can_id: 3
         profile_mode: 0
 
       - controller_index: 3
         driver_id: 0
-        node_id: 4
+        can_id: 4
         profile_mode: 0
 
 drivers:
@@ -32,11 +32,11 @@ drivers:
     # CubeMars SocketCAN uses the MIT 16-bit position field directly.
     # This common field is kept for compatibility and is not used by cubemars_driver.
     pulse_per_revolution: 65536
-    rated_torque: 12.0
-    unit_torque: 1.0
-    lower: -1.0
-    upper: 1.0
-    speed: 22.5
+    rated_effort: 12.0
+    unit_effort: 1.0
+    lower: -57.2957795131
+    upper: 57.2957795131
+    speed: 1289.1550390444
     acceleration: 0.0
     deceleration: 0.0
     profile_velocity: 0.0
@@ -44,6 +44,6 @@ drivers:
     profile_deceleration: 0.0
     profile_position_value: 0
     profile_velocity_value: 0
-    profile_torque_value: 0
+    profile_effort_value: 0
     type: cubemars
     param_file: ../param

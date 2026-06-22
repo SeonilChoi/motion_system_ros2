@@ -3,19 +3,19 @@ motor_type: AK10_30_cubemars
 kp: 20.0
 kd: 5.0
 
-# MIT protocol position encoding range. This is not the user command limit.
-# The -1..1 rad command limit is configured as lower/upper in the driver config.
-p_min: -12.5
-p_max: 12.5
-v_min: -45.0
-v_max: 45.0
+# MIT protocol position and velocity encoding ranges. These are not the user
+# command limits; lower/upper/speed are configured in the driver config.
+p_min: -716.1972439135
+p_max: 716.1972439135
+v_min: -2578.3100780887
+v_max: 2578.3100780887
 t_min: -18.0
 t_max: 18.0
 
 # Some CubeMars/T-Motor firmwares reply with CAN ID 0x2900 + node_id and put
 # node_id at byte 0, then signed position/velocity/current fields after it.
-servo_position_scale: 0.0003834951969714103
-servo_velocity_scale: 0.001
+servo_position_scale: 0.0219726562
+servo_velocity_scale: 0.0572957795
 servo_current_scale: 0.01
 
 interfaces:
@@ -28,6 +28,6 @@ interfaces:
   - { id: 99, index: 0 } # SocketCAN status frame
   - { id: 6,  index: 1, size: 2, type: u16 } # position, 16 bits
   - { id: 7,  index: 3, size: 2, type: u16 } # velocity, 12 bits
-  - { id: 8,  index: 4, size: 2, type: u16 } # torque/current, 12 bits
+  - { id: 8,  index: 4, size: 2, type: u16 } # effort/current, 12 bits
   - { id: 11, index: 6, size: 1, type: u8  } # temperature
   - { id: 5,  index: 7, size: 1, type: u8  } # error

@@ -27,10 +27,8 @@ constexpr int32_t kDialValueMax = 127;
 constexpr uint16_t kCwNewSetPointZeroerr = 0x103F;
 constexpr uint16_t kCwNewSetPointMinas = 0x003F;
 constexpr uint16_t kCwSocketcanSetPoint = 0x0001;
-constexpr uint16_t kCwDynamixelTorqueEnable = 1;
+constexpr uint16_t kCwDynamixelEffortEnable = 1;
 
-constexpr double kPi = 3.14159265358979323846;
-constexpr double kRpmToRadPerSec = 2.0 * kPi / 60.0;
 constexpr double kFaderEpsilon = 0.5;
 
 std::string to_lower(std::string s)
@@ -131,7 +129,7 @@ private:
     double lower{};
     double upper{};
     double speed{};
-    double rated_torque{};
+    double rated_effort{};
     std::string type;
   };
 
@@ -289,8 +287,8 @@ private:
       info.lower = required_as<double>(driver_node, "lower", "drivers[]");
       info.upper = required_as<double>(driver_node, "upper", "drivers[]");
       info.speed = required_as<double>(driver_node, "speed", "drivers[]");
-      info.rated_torque =
-        required_as<double>(driver_node, "rated_torque", "drivers[]");
+      info.rated_effort =
+        required_as<double>(driver_node, "rated_effort", "drivers[]");
       info.type = to_lower(required_as<std::string>(driver_node, "type", "drivers[]"));
       drivers.emplace(id, info);
     }
@@ -407,16 +405,16 @@ private:
       case 1: {
         msg.number_of_target_interfaces[idx] = 1;
         msg.target_interface_id[idx].data = std::vector<int8_t>{2};
-        const double rpm = scale_fader(
+        const double degrees_per_second = scale_fader(
           fader_value, -motor.driver.speed, motor.driver.speed);
-        msg.velocity[idx] = rpm * kRpmToRadPerSec;
+        msg.velocity[idx] = degrees_per_second;
         break;
       }
       case 2: {
         msg.number_of_target_interfaces[idx] = 1;
         msg.target_interface_id[idx].data = std::vector<int8_t>{3};
         msg.effort[idx] = scale_fader(
-          fader_value, -motor.driver.rated_torque, motor.driver.rated_torque);
+          fader_value, -motor.driver.rated_effort, motor.driver.rated_effort);
         break;
       }
       default:
@@ -451,7 +449,7 @@ private:
       return kCwSocketcanSetPoint;
     }
     if (type == "dynamixel") {
-      return kCwDynamixelTorqueEnable;
+      return kCwDynamixelEffortEnable;
     }
 
     RCLCPP_WARN(

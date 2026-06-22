@@ -46,12 +46,12 @@ masters:
     slaves:
       - controller_index: 4
         driver_id: 1
-        node_id: 1
+        can_id: 1
         profile_mode: 0
 
       - controller_index: 5
         driver_id: 1
-        node_id: 2
+        can_id: 2
         profile_mode: 0
 
   - id: 2
@@ -62,12 +62,12 @@ masters:
     slaves:
       - controller_index: 6
         driver_id: 2
-        node_id: 1
+        can_id: 1
         profile_mode: 0
 
       - controller_index: 7
         driver_id: 3
-        node_id: 2
+        can_id: 2
         profile_mode: 0
 
   - id: 3
@@ -78,84 +78,84 @@ masters:
     slaves:
       - controller_index: 8
         driver_id: 4
-        node_id: 3
+        can_id: 3
         profile_mode: 0
 
       - controller_index: 9
         driver_id: 4
-        node_id: 4
+        can_id: 4
         profile_mode: 0
 
 drivers:
   - id: 0
     pulse_per_revolution: 8388608
-    rated_torque: 0.16
-    unit_torque: 0.1
-    lower: -1.0
-    upper: 1.0
+    rated_effort: 0.16
+    unit_effort: 0.1
+    lower: -57.2957795131
+    upper: 57.2957795131
     speed: 2000
-    acceleration: 1.0
-    deceleration: 1.0
-    profile_velocity: 1.0
-    profile_acceleration: 1.0
-    profile_deceleration: 1.0
+    acceleration: 57.2957795131
+    deceleration: 57.2957795131
+    profile_velocity: 57.2957795131
+    profile_acceleration: 57.2957795131
+    profile_deceleration: 57.2957795131
     profile_position_value: 1
     profile_velocity_value: 3
-    profile_torque_value: 4
+    profile_effort_value: 4
     type: minas
     param_file: ../param
 
   - id: 1
     pulse_per_revolution: 524288
-    rated_torque: 25.0
-    unit_torque: 0.1
-    lower: -1.0
-    upper: 1.0
+    rated_effort: 25.0
+    unit_effort: 0.1
+    lower: -57.2957795131
+    upper: 57.2957795131
     speed: 2000
-    acceleration: 1.5
-    deceleration: 1.5
-    profile_velocity: 1.5
-    profile_acceleration: 1.5
-    profile_deceleration: 1.5
+    acceleration: 85.9436692696
+    deceleration: 85.9436692696
+    profile_velocity: 85.9436692696
+    profile_acceleration: 85.9436692696
+    profile_deceleration: 85.9436692696
     profile_position_value: 1
     profile_velocity_value: 3
-    profile_torque_value: 4
+    profile_effort_value: 4
     type: zeroerr
     param_file: ../param
 
   - id: 2
     pulse_per_revolution: 4096
-    rated_torque: 1193.0
-    unit_torque: 1.0
-    lower: -1.0
-    upper: 1.0
-    speed: 6.0
-    acceleration: 100.0
-    deceleration: 100.0
-    profile_velocity: 6.0
-    profile_acceleration: 100.0
-    profile_deceleration: 100.0
+    rated_effort: 1193.0
+    unit_effort: 1.0
+    lower: -57.2957795131
+    upper: 57.2957795131
+    speed: 343.7746770785
+    acceleration: 5729.5779513082
+    deceleration: 5729.5779513082
+    profile_velocity: 343.7746770785
+    profile_acceleration: 5729.5779513082
+    profile_deceleration: 5729.5779513082
     profile_position_value: 3
     profile_velocity_value: 1
-    profile_torque_value: 0
+    profile_effort_value: 0
     type: dynamixel
     param_file: ../param/dynamixel/xm430_w350.yaml
 
   - id: 3
     pulse_per_revolution: 4096
-    rated_torque: 1193.0
-    unit_torque: 1.0
-    lower: -1.0
-    upper: 1.0
-    speed: 6.0
-    acceleration: 100.0
-    deceleration: 100.0
-    profile_velocity: 6.0
-    profile_acceleration: 100.0
-    profile_deceleration: 100.0
+    rated_effort: 1193.0
+    unit_effort: 1.0
+    lower: -57.2957795131
+    upper: 57.2957795131
+    speed: 343.7746770785
+    acceleration: 5729.5779513082
+    deceleration: 5729.5779513082
+    profile_velocity: 343.7746770785
+    profile_acceleration: 5729.5779513082
+    profile_deceleration: 5729.5779513082
     profile_position_value: 3
     profile_velocity_value: 1
-    profile_torque_value: 0
+    profile_effort_value: 0
     type: dynamixel
     param_file: ../param/dynamixel/xm540_w270.yaml
 
@@ -163,11 +163,11 @@ drivers:
     # CubeMars SocketCAN uses the MIT 16-bit position field directly.
     # This common field is kept for compatibility and is not used by cubemars_driver.
     pulse_per_revolution: 65536
-    rated_torque: 12.0
-    unit_torque: 1.0
-    lower: -1.0
-    upper: 1.0
-    speed: 22.5
+    rated_effort: 12.0
+    unit_effort: 1.0
+    lower: -57.2957795131
+    upper: 57.2957795131
+    speed: 1289.1550390444
     acceleration: 0.0
     deceleration: 0.0
     profile_velocity: 0.0
@@ -175,6 +175,6 @@ drivers:
     profile_deceleration: 0.0
     profile_position_value: 0
     profile_velocity_value: 0
-    profile_torque_value: 0
+    profile_effort_value: 0
     type: cubemars
     param_file: ../param

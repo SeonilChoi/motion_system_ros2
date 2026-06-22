@@ -1,5 +1,4 @@
 import os
-import math
 import yaml
 import pyqtgraph as pg
 
@@ -33,18 +32,11 @@ import rclpy
 ID_CONTROLWORD = 0
 ID_TARGET_POSITION = 1
 ID_TARGET_VELOCITY = 2
-ID_TARGET_TORQUE = 3
+ID_TARGET_EFFORT = 3
 
 CW_NEW_SET_POINT_ZEROERR = 0x103F
 CW_NEW_SET_POINT_MINAS = 0x003F
 CW_SOCKETCAN_SET_POINT = 0x0001
-
-RAD_2_DEG = 180.0 / math.pi
-DEG_2_RAD = math.pi / 180.0
-
-RAD_2_RPM = 60.0 / (2.0 * math.pi)
-RPM_2_RAD = 2.0 * math.pi / 60.0
-
 
 class MotorManagerWidget(QMainWindow):
     _QOS_REKL5V = QoSProfile(
@@ -147,7 +139,7 @@ class MotorManagerWidget(QMainWindow):
                     'lower': driver_info.get('lower'),
                     'upper': driver_info.get('upper'),
                     'speed': driver_info.get('speed'),
-                    'rated_torque': driver_info.get('rated_torque'),
+                    'rated_effort': driver_info.get('rated_effort'),
                     'type': driver_info.get('type'),
                 })
 
@@ -248,7 +240,7 @@ class MotorManagerWidget(QMainWindow):
             else:
                 self._cur_val_label.setText(f"Current Value:  {int(value // 100)}.{int(value % 100)}")
         elif profile_mode == 1:
-            self._cur_val_label.setText(f"Current Value:  {int(value)} RPM")
+            self._cur_val_label.setText(f"Current Value:  {int(value)} deg/s")
         elif profile_mode == 2:
             self._cur_val_label.setText(f"Current Value:  {int(value)} Nm")
 
@@ -281,7 +273,7 @@ class MotorManagerWidget(QMainWindow):
             )
             msg.controlword[index] = self._controlword_for_driver(driver_type)
 
-        msg.position[index] = value / 100.0 * DEG_2_RAD
+        msg.position[index] = value / 100.0
 
     def _on_reset_button_clicked(self):
         self._current_controller_index = None
@@ -311,12 +303,12 @@ class MotorManagerWidget(QMainWindow):
             msg.target_interface_id[self._current_controller_index] = Int8MultiArray(
                 data=[ID_TARGET_VELOCITY]
             )
-            msg.velocity[self._current_controller_index] = value * RPM_2_RAD
+            msg.velocity[self._current_controller_index] = value
 
         elif motor_info['profile_mode'] == 2:
             msg.number_of_target_interfaces[self._current_controller_index] = 1
             msg.target_interface_id[self._current_controller_index] = Int8MultiArray(
-                data=[ID_TARGET_TORQUE]
+                data=[ID_TARGET_EFFORT]
             )
             msg.effort[self._current_controller_index] = value
             
@@ -333,20 +325,20 @@ class MotorManagerWidget(QMainWindow):
 
         motor_info = self._motor_infos[index]
         if motor_info["profile_mode"] == 0:
-            lower = int(motor_info["lower"] * RAD_2_DEG * 100)
-            upper = int(motor_info["upper"] * RAD_2_DEG * 100)
-            current_value = int(self._motor_status.position[index] * RAD_2_DEG * 100)
+            lower = int(motor_info["lower"] * 100)
+            upper = int(motor_info["upper"] * 100)
+            current_value = int(self._motor_status.position[index] * 100)
             self._max_value_label.setText(f"{int(upper // 100)}.{int(upper % 100)}")
 
         elif motor_info["profile_mode"] == 1:
-            rpm = int(motor_info["speed"])
-            lower = -int(rpm)
-            upper = int(rpm)
-            current_value = int(self._motor_status.velocity[index] * RAD_2_RPM)
+            velocity_limit = int(motor_info["speed"])
+            lower = -int(velocity_limit)
+            upper = int(velocity_limit)
+            current_value = int(self._motor_status.velocity[index])
             self._max_value_label.setText(f"{int(upper)}")
 
         elif motor_info["profile_mode"] == 2:
-            effort_limit = int(motor_info["rated_torque"])
+            effort_limit = int(motor_info["rated_effort"])
             lower = -int(effort_limit)
             upper = int(effort_limit)
             current_value = int(self._motor_status.effort[index])

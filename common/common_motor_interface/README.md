@@ -83,7 +83,7 @@ colcon build --packages-select common_motor_interface
 | --- | --- | --- | --- |
 | `number_of_target_interfaces` | `uint8_t` | 현재 제어 입력에서 사용할 인터페이스 수 | `0` |
 | `target_interface_id` | `uint8_t[]` | 현재 제어 입력에서 사용할 인터페이스 ID | zeros |
-| `controller_index` | `uint8_t` | `motor_controller`의 고유한 인덱스 | `0` |
+| `controller_index` | `uint8_t` | 제어할 `motor_controller` 인덱스 | `0` |
 | `controlword` | `uint16_t` | CiA-402 control word | `0` |
 | `statusword` | `uint16_t` | CiA-402 status word | `0` |
 | `errorcode` | `uint16_t` | 드라이버의 에러 코드 | `0` |
