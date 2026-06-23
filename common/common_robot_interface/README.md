@@ -1,6 +1,6 @@
 # common_robot_interface
 
-## English
+## English version
 
 `common_robot_interface` defines the shared data interfaces used between `robot_manager_node` and `robot_manager`.
 
@@ -9,6 +9,8 @@
 ```bash
 colcon build --packages-select common_robot_interface
 ```
+
+---
 
 ## API
 
@@ -41,7 +43,7 @@ colcon build --packages-select common_robot_interface
 | `robot_index` | `int` | Index of the `Robot`. |
 | `action` | `Action` | Current `Action` of the frame. |
 
-## Korean
+## Korean version
 
 `common_robot_interface`는 `robot_manager_node`와 `robot_manager` 간의 데이터 공유를 위해 사용하는 인터페이스이다.
 
@@ -50,6 +52,8 @@ colcon build --packages-select common_robot_interface
 ```bash
 colcon build --packages-select common_robot_interface
 ```
+
+---
 
 ## API
 
