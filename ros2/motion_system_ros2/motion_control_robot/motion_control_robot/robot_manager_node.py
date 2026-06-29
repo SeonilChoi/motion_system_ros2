@@ -1,6 +1,8 @@
 import numpy as np
 import rclpy
+
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int8MultiArray
@@ -14,15 +16,23 @@ from robot_manager.robot_manager import RobotManager
 
 JOY_BUTTON_MAX = 10
 
-JOY_BUTTON_SQUARE = 0
+JOY_BUTTON_CROSS = 0
 JOY_BUTTON_CIRCLE = 1
-JOY_BUTTON_CROSS = 2
+JOY_BUTTON_TRIANGLE = 2
+JOY_BUTTON_SQUARE = 3
 
-JOY_BUTTON_DPAD_LEFT = 4
-JOY_BUTTON_DPAD_RIGHT = 5
+JOY_BUTTON_L1 = 4
+JOY_BUTTON_R1 = 5
 
 
 class RobotManagerNode(Node):
+    QOS_BEKL1V = QoSProfile(
+        reliability=QoSReliabilityPolicy.BEST_EFFORT,
+        history=QoSHistoryPolicy.KEEP_LAST,
+        depth=1,
+        durability=QoSDurabilityPolicy.VOLATILE,
+    )
+
     def __init__(self):
         super().__init__('robot_manager_node')
 
@@ -45,16 +55,21 @@ class RobotManagerNode(Node):
             for i, robot_index in enumerate(self.robot_indices)
         }
 
+        self.request_publisher = self.create_publisher(
+            Int8MultiArray,
+            'motion_control/request',
+            self.QOS_BEKL1V,
+        )
         self.motor_status_subscriber = self.create_subscription(
             MotorStatus,
             'motion_control/motor_status',
             self.motor_status_callback,
-            10,
+            self.QOS_BEKL1V,
         )
         self.motor_command_publisher = self.create_publisher(
             MotorStatus,
             'motion_control/motor_command',
-            10,
+            self.QOS_BEKL1V,
         )
 
         self.joy_subscriber = self.create_subscription(
@@ -63,7 +78,7 @@ class RobotManagerNode(Node):
             self.joy_callback,
             10,
         )
-        self.timer = self.create_wall_timer(
+        self.timer = self.create_timer(
             self.dt,
             self.timer_callback,
         )
@@ -71,10 +86,12 @@ class RobotManagerNode(Node):
         self.joy_buttons: list[bool] = [False] * JOY_BUTTON_MAX
         self.joy_buttons_prev: list[bool] = [False] * JOY_BUTTON_MAX
         self.joy_button_action: dict[int, Action] = {
-            JOY_BUTTON_SQUARE: Action.HOME,
+            JOY_BUTTON_TRIANGLE: Action.HOME,
             JOY_BUTTON_CIRCLE: Action.MOVE,
-            JOY_BUTTON_CROSS: Action.STOP,
+            JOY_BUTTON_SQUARE: Action.STOP,
         }
+
+        self.is_valid_joint_status: bool = False
 
         self.selected_robot_index: int = self.robot_indices[0]
         self.robot_actions: list[action_frame_t] = [
@@ -91,6 +108,10 @@ class RobotManagerNode(Node):
             effort=np.asarray(msg.effort, dtype=np.float64),
         )
         self.robot_manager.updateJointStatus(joint_status)
+
+        statuswords = np.asarray(msg.statusword, dtype=np.uint16)
+        if np.all(statuswords != 0):
+            self.is_valid_joint_status = True
 
     def publish_motor_command(self, commands: joint_frame_t):
         msg = MotorStatus()
@@ -117,19 +138,32 @@ class RobotManagerNode(Node):
         return self.robot_action_indices[self.selected_robot_index]
 
     def timer_callback(self):
+        if not self.is_valid_joint_status:
+            return
+
+        if self.joy_buttons[JOY_BUTTON_CROSS] and not self.joy_buttons_prev[JOY_BUTTON_CROSS]:
+            controller_indices = self.robot_manager.controller_indices()
+            if controller_indices:
+                request = Int8MultiArray()
+                request.data = [2] * (max(controller_indices) + 1)
+                for controller_index in controller_indices:
+                    request.data[controller_index] = 0
+                self.request_publisher.publish(request)
+
         # Check if the robot is stopped because of the homing is completed
         state_frames = self.robot_manager.get_state_frames()
+
         for state_frame in state_frames:
             robot_action_index = self.robot_action_indices[state_frame.robot_index]
             if state_frame.state == State.STOPPED and self.robot_actions[robot_action_index].action != Action.STOP:
                 self.robot_actions[robot_action_index].action = Action.STOP
 
         # Select the robot by the DPAD
-        if self.joy_buttons[JOY_BUTTON_DPAD_LEFT] and not self.joy_buttons_prev[JOY_BUTTON_DPAD_LEFT]:
+        if self.joy_buttons[JOY_BUTTON_L1] and not self.joy_buttons_prev[JOY_BUTTON_L1]:
             selected_action_index = self.selected_robot_action_index()
             selected_action_index = selected_action_index - 1 if selected_action_index > 0 else self.number_of_robots - 1
             self.selected_robot_index = self.robot_indices[selected_action_index]
-        elif self.joy_buttons[JOY_BUTTON_DPAD_RIGHT] and not self.joy_buttons_prev[JOY_BUTTON_DPAD_RIGHT]:
+        elif self.joy_buttons[JOY_BUTTON_R1] and not self.joy_buttons_prev[JOY_BUTTON_R1]:
             selected_action_index = (self.selected_robot_action_index() + 1) % self.number_of_robots
             self.selected_robot_index = self.robot_indices[selected_action_index]
 

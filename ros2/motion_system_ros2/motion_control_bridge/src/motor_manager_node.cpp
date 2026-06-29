@@ -17,10 +17,10 @@ MotorManagerNode::MotorManagerNode(const rclcpp::NodeOptions& options)
         }
     );
 
-    request_stop_subscriber_ = this->create_subscription<Empty>(
-        "motion_control/request_stop", rclcpp::QoS(1).best_effort(),
-        [this](const Empty::SharedPtr msg) {
-            request_stop_callback(msg);
+    request_subscriber_ = this->create_subscription<Int8MultiArray>(
+        "motion_control/request", rclcpp::QoS(1).best_effort(),
+        [this](const Int8MultiArray::SharedPtr msg) {
+            request_callback(msg);
         }
     );
 
@@ -64,7 +64,7 @@ MotorManagerNode::~MotorManagerNode()
 }
 
 void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
-{
+{    
     const size_t size = std::min({
         msg->controller_index.size(),
         static_cast<size_t>(motor_interface::MAX_CONTROLLER_SIZE),
@@ -84,8 +84,8 @@ void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
         }
         motor_frame[i].controller_index = msg->controller_index[i];
         motor_frame[i].controlword = msg->controlword[i];
-        motor_frame[i].statusword = msg->statusword[i];
-        motor_frame[i].errorcode = msg->errorcode[i];
+        //motor_frame[i].statusword = msg->statusword[i];
+        //motor_frame[i].errorcode = msg->errorcode[i];
         motor_frame[i].position = msg->position[i];
         motor_frame[i].velocity = msg->velocity[i];
         motor_frame[i].effort = msg->effort[i];
@@ -94,11 +94,13 @@ void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
     motor_manager_->write(motor_frame, static_cast<uint8_t>(size));
 }
 
-void MotorManagerNode::request_stop_callback(const Empty::SharedPtr msg)
+void MotorManagerNode::request_callback(const Int8MultiArray::SharedPtr msg)
 {
-    (void)msg;
-
-    motor_manager_->request_stop();
+    const size_t size = std::min({
+        msg->data.size(),
+        static_cast<size_t>(motor_interface::MAX_CONTROLLER_SIZE),
+    });
+    motor_manager_->request(msg->data.data(), static_cast<uint8_t>(size));
 }
 
 void MotorManagerNode::timer_callback()

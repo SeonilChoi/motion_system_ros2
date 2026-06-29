@@ -6,14 +6,14 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "motion_control_msgs/msg/motor_status.hpp"
-#include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/int8_multi_array.hpp"
 
 #include "motor_manager/motor_manager.hpp"
 
 class MotorManagerNode : public rclcpp::Node {
 public:
     using MotorStatus = motion_control_msgs::msg::MotorStatus;
-    using Empty = std_msgs::msg::Empty;
+    using Int8MultiArray = std_msgs::msg::Int8MultiArray;
 
     explicit MotorManagerNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
@@ -22,13 +22,13 @@ public:
 private:
     void motor_command_callback(const MotorStatus::SharedPtr msg);
 
-    void request_stop_callback(const Empty::SharedPtr msg);
+    void request_callback(const Int8MultiArray::SharedPtr msg);
 
     void timer_callback();
 
     rclcpp::Subscription<MotorStatus>::SharedPtr motor_command_subscriber_;
 
-    rclcpp::Subscription<Empty>::SharedPtr request_stop_subscriber_;
+    rclcpp::Subscription<Int8MultiArray>::SharedPtr request_subscriber_;
 
     rclcpp::Publisher<MotorStatus>::SharedPtr motor_status_publisher_;
 

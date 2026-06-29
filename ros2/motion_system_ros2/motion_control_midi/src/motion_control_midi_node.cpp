@@ -1,9 +1,14 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cctype>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <functional>
+#include <iomanip>
+#include <limits>
 #include <map>
 #include <mutex>
 #include <stdexcept>
@@ -33,6 +38,8 @@ constexpr double kFaderEpsilon = 0.5;
 constexpr auto kPublishPeriod = std::chrono::milliseconds(5);
 constexpr double kMaxSmoothingTimeMs = 3000.0;
 constexpr double kSmoothingCurvePower = 2.0;
+constexpr const char * kMotionRecordDirectory =
+  "/home/csi/colcon_ws/src/ros2/motion_system_ros2/motion_control_robot/motions";
 
 std::string to_lower(std::string s)
 {
@@ -76,15 +83,18 @@ class MotionControlMidiNode : public rclcpp::Node
 public:
   using MidiMsg = midi_msgs::msg::Midi;
   using MotorStatus = motion_control_msgs::msg::MotorStatus;
+  using Int8MultiArray = std_msgs::msg::Int8MultiArray;
 
   explicit MotionControlMidiNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
   : rclcpp::Node("motion_control_midi_node", options)
   {
     const std::string config_file =
-      "src/ros2/motion_system_ros2/motion_control_bridge/config/example_socketcan_cubemars.yaml";
+      "src/ros2/motion_system_ros2/motion_control_bridge/config/example_ethercat_zeroerr.yaml";
     publish_period_ = kPublishPeriod;
     max_smoothing_time_ms_ = kMaxSmoothingTimeMs;
     smoothing_curve_power_ = kSmoothingCurvePower;
+    declare_parameter<bool>("record_motion", false);
+    declare_parameter<std::string>("record_file_name", "recorded_motion.csv");
 
     motor_infos_ = load_motor_infos(config_file);
     if (motor_infos_.empty()) {
@@ -94,6 +104,12 @@ public:
 
     motor_command_pub_ = create_publisher<MotorStatus>(
       "motion_control/motor_command", rclcpp::QoS(1).best_effort());
+    request_pub_ = create_publisher<Int8MultiArray>(
+      "motion_control/request", rclcpp::QoS(1).best_effort());
+
+    motor_status_sub_ = create_subscription<MotorStatus>(
+      "motion_control/motor_status", rclcpp::QoS(1).best_effort(),
+      std::bind(&MotionControlMidiNode::motor_status_callback, this, std::placeholders::_1));
 
     midi_sub_ = create_subscription<MidiMsg>(
       "/xtouch/midi", rclcpp::QoS(1).best_effort(),
@@ -101,12 +117,6 @@ public:
 
     command_tick_ = create_wall_timer(
       publish_period_, std::bind(&MotionControlMidiNode::publish_motor_command, this));
-
-    RCLCPP_INFO(
-      get_logger(),
-      "motion_control_midi_node ready. Loaded %zu controller(s) from '%s'; "
-      "subscribing '%s', publishing '%s'.",
-      motor_infos_.size(), config_file.c_str(), "/xtouch/midi", "motion_control/motor_command");
   }
 
 private:
@@ -145,6 +155,9 @@ private:
 
   void midi_callback(const MidiMsg::SharedPtr msg)
   {
+    publish_request_on_btn0_change(*msg);
+    update_motion_recording(*msg);
+
     std::vector<PendingTarget> targets;
     targets.reserve(kNumMidiChannels);
 
@@ -155,10 +168,6 @@ private:
 
       const std::size_t motor_index = ch + bank_offset(*msg, ch);
       if (motor_index >= motor_infos_.size()) {
-        RCLCPP_WARN_THROTTLE(
-          get_logger(), *get_clock(), 2000,
-          "Ignoring MIDI ch%zu -> motor %zu; config has %zu controller(s).",
-          ch, motor_index, motor_infos_.size());
         continue;
       }
 
@@ -185,6 +194,66 @@ private:
       state.active = true;
       state.target_fader = target.fader;
       state.dial = target.dial;
+    }
+  }
+
+  void motor_status_callback(const MotorStatus::SharedPtr msg)
+  {
+    std::lock_guard<std::mutex> lk(recording_mutex_);
+    if (motion_recording_active_) {
+      append_motion_record_sample(*msg);
+    }
+  }
+
+  void publish_request_on_btn0_change(const MidiMsg & msg)
+  {
+    Int8MultiArray request;
+    request.data.assign(motor_infos_.size(), 2);
+
+    bool should_publish = false;
+    for (std::size_t ch = 0; ch < kNumMidiChannels; ++ch) {
+      const bool active = bool_at(msg.btn0, ch);
+      if (active == btn0_active_[ch]) {
+        continue;
+      }
+
+      btn0_active_[ch] = active;
+      const std::size_t motor_index = ch + bank_offset(msg, ch);
+      if (motor_index >= motor_infos_.size()) {
+        continue;
+      }
+
+      const std::size_t controller_index = motor_infos_[motor_index].controller_index;
+      if (controller_index >= request.data.size()) {
+        request.data.resize(controller_index + 1, 2);
+      }
+      request.data[controller_index] = active ? 0 : 1;
+      should_publish = true;
+    }
+
+    if (should_publish) {
+      request_pub_->publish(request);
+    }
+  }
+
+  void update_motion_recording(const MidiMsg & msg)
+  {
+    bool btn3_active = false;
+    for (std::size_t ch = 0; ch < kNumMidiChannels; ++ch) {
+      btn3_active = btn3_active || bool_at(msg.btn3, ch);
+    }
+
+    bool record_motion = false;
+    get_parameter("record_motion", record_motion);
+    if (!record_motion) {
+      stop_motion_recording(false);
+      return;
+    }
+
+    if (btn3_active) {
+      start_motion_recording();
+    } else {
+      stop_motion_recording(true);
     }
   }
 
@@ -370,8 +439,6 @@ private:
     const std::size_t idx = motor.controller_index;
 
     if (idx >= msg.controller_index.size()) {
-      RCLCPP_WARN(
-        get_logger(), "Controller index %zu is outside MotorStatus array.", idx);
       return false;
     }
 
@@ -405,10 +472,6 @@ private:
         break;
       }
       default:
-        RCLCPP_WARN_THROTTLE(
-          get_logger(), *get_clock(), 2000,
-          "Unsupported profile_mode %d for controller %u.",
-          motor.profile_mode, motor.controller_index);
         return false;
     }
 
@@ -439,19 +502,165 @@ private:
       return kCwDynamixelEffortEnable;
     }
 
-    RCLCPP_WARN(
-      get_logger(), "Unknown driver type '%s'; using zeroerr set-point controlword.",
-      driver_type.c_str());
     return kCwNewSetPointZeroerr;
   }
 
+  std::filesystem::path motion_record_path() const
+  {
+    std::string file_name;
+    get_parameter("record_file_name", file_name);
+    if (file_name.empty()) {
+      file_name = "recorded_motion.csv";
+    }
+
+    std::filesystem::path name = std::filesystem::path(file_name).filename();
+    if (name.empty() || name == ".") {
+      name = "recorded_motion.csv";
+    }
+    if (name.extension().empty()) {
+      name += ".csv";
+    }
+
+    return std::filesystem::path(kMotionRecordDirectory) / name;
+  }
+
+  bool write_motion_csv(
+    const std::filesystem::path & path,
+    const std::vector<std::vector<double>> & rows) const
+  {
+    std::ofstream output(path, std::ios::trunc);
+    if (!output) {
+      return false;
+    }
+
+    output << std::setprecision(std::numeric_limits<double>::max_digits10);
+    for (std::size_t row = 0; row < rows.size(); ++row) {
+      for (std::size_t col = 0; col < rows[row].size(); ++col) {
+        if (col > 0) {
+          output << ", ";
+        }
+        output << rows[row][col];
+      }
+      if (row + 1 < rows.size()) {
+        output << '\n';
+      }
+    }
+
+    return static_cast<bool>(output);
+  }
+
+  bool position_for_controller(
+    const MotorStatus & status,
+    uint8_t controller_index,
+    double & position) const
+  {
+    for (std::size_t i = 0; i < status.controller_index.size(); ++i) {
+      if (status.controller_index[i] != controller_index) {
+        continue;
+      }
+      if (i >= status.position.size()) {
+        return false;
+      }
+      position = status.position[i];
+      return true;
+    }
+
+    return false;
+  }
+
+  void start_motion_recording()
+  {
+    std::lock_guard<std::mutex> lk(recording_mutex_);
+    if (motion_recording_active_) {
+      return;
+    }
+    motion_recording_rows_.clear();
+    motion_recording_active_ = true;
+  }
+
+  void stop_motion_recording(bool save)
+  {
+    std::vector<std::vector<double>> rows;
+    {
+      std::lock_guard<std::mutex> lk(recording_mutex_);
+      if (!motion_recording_active_) {
+        return;
+      }
+      motion_recording_active_ = false;
+      rows.swap(motion_recording_rows_);
+    }
+
+    if (save && !rows.empty()) {
+      save_motion_record(rows);
+    }
+  }
+
+  void append_motion_record_sample(const MotorStatus & status)
+  {
+    std::size_t row_count = 0;
+    for (const auto & motor : motor_infos_) {
+      row_count = std::max(row_count, static_cast<std::size_t>(motor.controller_index) + 1);
+    }
+    if (row_count == 0) {
+      return;
+    }
+
+    std::vector<double> sample(row_count, 0.0);
+    std::vector<bool> has_sample(row_count, false);
+    bool has_recorded_value = false;
+    for (const auto & motor : motor_infos_) {
+      const std::size_t row = motor.controller_index;
+      if (motor.profile_mode != 0 || row >= row_count) {
+        continue;
+      }
+
+      double position = 0.0;
+      if (!position_for_controller(status, motor.controller_index, position)) {
+        continue;
+      }
+
+      sample[row] = position;
+      has_sample[row] = true;
+      has_recorded_value = true;
+    }
+
+    if (!has_recorded_value) {
+      return;
+    }
+
+    motion_recording_rows_.resize(row_count);
+    for (std::size_t row = 0; row < motion_recording_rows_.size(); ++row) {
+      const double value =
+        has_sample[row] ? sample[row] :
+        (motion_recording_rows_[row].empty() ? 0.0 : motion_recording_rows_[row].back());
+      motion_recording_rows_[row].push_back(value);
+    }
+  }
+
+  void save_motion_record(const std::vector<std::vector<double>> & rows) const
+  {
+    const std::filesystem::path path = motion_record_path();
+    std::error_code ec;
+    std::filesystem::create_directories(path.parent_path(), ec);
+    if (ec) {
+      return;
+    }
+    write_motion_csv(path, rows);
+  }
+
   rclcpp::Subscription<MidiMsg>::SharedPtr midi_sub_;
+  rclcpp::Subscription<MotorStatus>::SharedPtr motor_status_sub_;
   rclcpp::Publisher<MotorStatus>::SharedPtr motor_command_pub_;
+  rclcpp::Publisher<Int8MultiArray>::SharedPtr request_pub_;
   rclcpp::TimerBase::SharedPtr command_tick_;
 
   std::vector<MotorInfo> motor_infos_;
   std::vector<MotorCommandState> motor_states_;
+  std::array<bool, kNumMidiChannels> btn0_active_{};
   std::mutex state_mutex_;
+  std::mutex recording_mutex_;
+  std::vector<std::vector<double>> motion_recording_rows_;
+  bool motion_recording_active_{};
   std::chrono::milliseconds publish_period_{5};
   double max_smoothing_time_ms_{3000.0};
   double smoothing_curve_power_{2.0};
@@ -462,9 +671,7 @@ int main(int argc, char ** argv)
   rclcpp::init(argc, argv);
   try {
     rclcpp::spin(std::make_shared<MotionControlMidiNode>());
-  } catch (const std::exception & e) {
-    RCLCPP_FATAL(
-      rclcpp::get_logger("motion_control_midi_node"), "%s", e.what());
+  } catch (const std::exception &) {
     rclcpp::shutdown();
     return 1;
   }

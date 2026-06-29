@@ -19,7 +19,7 @@ def generate_launch_description():
     motor_config_file = os.path.join(
         motion_control_bridge_pkg_share,
         'config',
-        'example_socketcan_cubemars.yaml',
+        'example_ethercat_zeroerr.yaml',
     )
 
     robot_config_file_arg = DeclareLaunchArgument(

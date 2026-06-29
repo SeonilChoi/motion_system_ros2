@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('motion_control_bridge')
-    default_config = os.path.join(pkg_share, 'config', 'example_socketcan_cubemars.yaml')
+    default_config = os.path.join(pkg_share, 'config', 'example_ethercat_zeroerr.yaml')
 
     config_file_arg = DeclareLaunchArgument(
         'config_file',
