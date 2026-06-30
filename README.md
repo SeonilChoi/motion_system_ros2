@@ -4,6 +4,7 @@ This repository is a ROS 2 workspace source tree for motor control and related
 operator interfaces. It includes a YAML-configured motor manager, ROS 2 bridge
 nodes, controller input support, MIDI control support, and an iAHRS IMU driver.
 
+hi
 ## Clone
 
 Clone this repository as the `src` directory of a colcon workspace:
