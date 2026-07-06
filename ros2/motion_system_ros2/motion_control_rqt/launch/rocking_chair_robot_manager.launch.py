@@ -5,17 +5,15 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
     motor_config_file = LaunchConfiguration('motor_config_file')
     robot_config_file = LaunchConfiguration('robot_config_file')
-    record_motion = LaunchConfiguration('record_motion')
-    record_file_name = LaunchConfiguration('record_file_name')
 
     motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
     motion_control_robot_pkg_share = get_package_share_directory('motion_control_robot')
+
     default_motor_config_file = os.path.join(
         motion_control_bridge_pkg_share,
         'config',
@@ -38,16 +36,6 @@ def generate_launch_description():
             default_value=default_robot_config_file,
             description='Absolute path to robot_manager YAML.',
         ),
-        DeclareLaunchArgument(
-            'record_motion',
-            default_value='false',
-            description='Enable recording current motor_status positions when btn3 is activated.',
-        ),
-        DeclareLaunchArgument(
-            'record_file_name',
-            default_value='rocking_chair.csv',
-            description='CSV file name for recorded motion data.',
-        ),
         Node(
             package='motion_control_bridge',
             executable='motor_manager_node',
@@ -58,25 +46,23 @@ def generate_launch_description():
             }],
         ),
         Node(
-            package='xtouch_midi',
-            executable='xtouch_node',
-            name='xtouch_node',
+            package='motion_control_robot',
+            executable='robot_manager_node',
+            name='robot_manager_node',
             output='screen',
             parameters=[{
-                'btn0_requires_fader_update': True,
-                'btn3_requires_fader_update': True,
+                'config_file': robot_config_file,
             }],
         ),
         Node(
-            package='motion_control_midi',
-            executable='motion_control_midi_node',
-            name='motion_control_midi_node',
+            package='motion_control_rqt',
+            executable='run_rqt',
+            name='motion_control',
             output='screen',
+            arguments=['--force-discover'],
             parameters=[{
                 'config_file': motor_config_file,
-                'robot_config_file': robot_config_file,
-                'record_motion': ParameterValue(record_motion, value_type=bool),
-                'record_file_name': record_file_name,
+                'use_robot_manager_widget': True,
             }],
         ),
     ])

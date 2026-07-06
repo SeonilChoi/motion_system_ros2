@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(midi_msgs REQUIRED)
 find_package(motion_control_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 add_executable(motion_control_midi_node
@@ -21,6 +22,7 @@ ament_target_dependencies(motion_control_midi_node
   std_msgs
   midi_msgs
   motion_control_msgs
+  ament_index_cpp
 )
 target_link_libraries(motion_control_midi_node
   yaml-cpp

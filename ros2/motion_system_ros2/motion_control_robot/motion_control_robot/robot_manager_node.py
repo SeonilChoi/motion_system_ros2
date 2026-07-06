@@ -23,6 +23,7 @@ JOY_BUTTON_SQUARE = 3
 
 JOY_BUTTON_L1 = 4
 JOY_BUTTON_R1 = 5
+JOY_BUTTON_START = 9
 
 
 class RobotManagerNode(Node):
@@ -39,11 +40,13 @@ class RobotManagerNode(Node):
         self.config_file = (
             self.declare_parameter(
                 'config_file',
-                'src/ros2/motion_system_ros2/motion_control_robot/config/rocking_chair.yaml',
+                '',
             )
             .get_parameter_value()
             .string_value
         )
+        if not self.config_file:
+            raise RuntimeError('config_file parameter must be set.')
         self.robot_manager = RobotManager(self.config_file)
         self.number_of_robots = self.robot_manager.number_of_robots
         self.dt = self.robot_manager.dt
@@ -137,18 +140,25 @@ class RobotManagerNode(Node):
     def selected_robot_action_index(self) -> int:
         return self.robot_action_indices[self.selected_robot_index]
 
+    def publish_controller_request(self, request_value: int):
+        controller_indices = self.robot_manager.controller_indices()
+        if not controller_indices:
+            return
+
+        request = Int8MultiArray()
+        request.data = [2] * (max(controller_indices) + 1)
+        for controller_index in controller_indices:
+            request.data[controller_index] = request_value
+        self.request_publisher.publish(request)
+
     def timer_callback(self):
         if not self.is_valid_joint_status:
             return
 
         if self.joy_buttons[JOY_BUTTON_CROSS] and not self.joy_buttons_prev[JOY_BUTTON_CROSS]:
-            controller_indices = self.robot_manager.controller_indices()
-            if controller_indices:
-                request = Int8MultiArray()
-                request.data = [2] * (max(controller_indices) + 1)
-                for controller_index in controller_indices:
-                    request.data[controller_index] = 0
-                self.request_publisher.publish(request)
+            self.publish_controller_request(0)
+        elif self.joy_buttons[JOY_BUTTON_START] and not self.joy_buttons_prev[JOY_BUTTON_START]:
+            self.publish_controller_request(1)
 
         # Check if the robot is stopped because of the homing is completed
         state_frames = self.robot_manager.get_state_frames()

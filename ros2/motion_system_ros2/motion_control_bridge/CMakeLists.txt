@@ -34,7 +34,7 @@ install(TARGETS motor_manager_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(DIRECTORY launch config param
+install(DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
 

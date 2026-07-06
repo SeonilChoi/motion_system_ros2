@@ -13,6 +13,7 @@
   <depend>rclpy</depend>
   <depend>motion_control_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
 
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
@@ -20,6 +21,7 @@
   <exec_depend>python3-pyqtgraph</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>motion_control_bridge</exec_depend>
+  <exec_depend>motion_control_robot</exec_depend>
   <exec_depend>rqt_gui</exec_depend>
   <exec_depend>rqt_gui_py</exec_depend>
   <exec_depend>python_qt_binding</exec_depend>

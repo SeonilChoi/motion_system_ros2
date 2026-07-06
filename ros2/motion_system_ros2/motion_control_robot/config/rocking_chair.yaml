@@ -10,4 +10,4 @@ robot:
     home_positions: [0.0]
     home_duration: 5.0
     move_duration: 30.0
-    motion_data_file_path: "../motions"
+    motion_data_file_path: "package://robot_manager/robots/motions"

@@ -9,7 +9,11 @@ import os
 
 def generate_launch_description():
     motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
-    default_motor_config = os.path.join(motion_control_bridge_pkg_share, 'config', 'example.yaml')
+    default_motor_config = os.path.join(
+        motion_control_bridge_pkg_share,
+        'config',
+        'example_ethercat_zeroerr.yaml',
+    )
 
     motor_config_file_arg = DeclareLaunchArgument(
         'motor_config_file',

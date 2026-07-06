@@ -57,11 +57,24 @@ ros2 launch motion_control_bridge motor_manager_node.launch.py \
   config_file:=~/colcon_ws/src/ros2/motion_system_ros2/motion_control_bridge/config/example_socketcan_cubemars.yaml
 ```
 
+The bridge example configs are intentionally split into one-controller files:
+
+| File | Communication | Driver |
+| --- | --- | --- |
+| `example_canopen_zeroerr.yaml` | CANopen | ZeroErr |
+| `example_ethercat_zeroerr.yaml` | EtherCAT | ZeroErr |
+| `example_ethercat_minas.yaml` | EtherCAT | Panasonic MINAS |
+| `example_serial_dynamixel.yaml` | Serial | Dynamixel |
+| `example_socketcan_cubemars.yaml` | SocketCAN | CubeMars |
+
 Other useful launch commands:
 
 ```bash
 # RQt motor control UI with motor manager
 ros2 launch motion_control_rqt display_motor_manager_node.launch.py
+
+# RQt motor and rocking-chair robot control UI
+ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py
 
 # Behringer X-Touch MIDI bridge
 ros2 launch xtouch_midi xtouch_node.launch.py
@@ -76,6 +89,28 @@ ros2 launch iahrs_driver iahrs_driver.py
 ros2 launch p9n_bringup teleop.launch.py hw_type:=DualSense
 ```
 
+RQt has two launch modes:
+
+- `display_motor_manager_node.launch.py` opens the standard `MotorManagerWidget`
+  for motor status monitoring and direct motor commands.
+- `rocking_chair_robot_manager.launch.py` starts `motor_manager_node`,
+  `robot_manager_node`, and RQt with `use_robot_manager_widget:=true`. In this
+  mode the plugin uses `RobotManagerWidget`, which inherits from
+  `MotorManagerWidget` and adds a second `Robot Manager` tab.
+
+The `Robot Manager` tab publishes `sensor_msgs/msg/Joy` messages on `/joy` so it
+drives `robot_manager_node` through the same button mapping as joystick input:
+
+| Button | Joy index | Robot action |
+| --- | --- | --- |
+| `Disable` | `0` / Cross | Disable motor controllers |
+| `Enable` | `9` / Start | Enable motor controllers |
+| `Move` | `1` / Circle | Move |
+| `Home` | `2` / Triangle | Home |
+| `Stop` | `3` / Square | Stop |
+| `L1` | `4` | Select previous robot |
+| `R1` | `5` | Select next robot |
+
 ## Available Communication Methods
 
 Motor communication backends:
@@ -84,15 +119,14 @@ Motor communication backends:
 - `canopen`: CANopen over SocketCAN.
 - `socketcan`: raw SocketCAN communication.
 - `serial`: serial communication for Dynamixel Protocol 2.0 devices.
-- `dynamixel`: accepted as a Dynamixel-oriented master type in the motor
-  manager configuration.
 
 ROS and device interfaces:
 
 - ROS 2 topics/services for motor commands, motor status, IMU data, and reset
   services.
 - MIDI input/output for Behringer X-Touch devices.
-- Linux joystick input for PlayStation controllers.
+- Linux joystick input for PlayStation controllers and RQt-generated
+  `sensor_msgs/msg/Joy` robot commands.
 - Serial IMU communication for iAHRS devices.
 
 ## Available Drivers
@@ -116,6 +150,24 @@ Example motor configuration files are available in:
 ```text
 ros2/motion_system_ros2/motion_control_bridge/config/
 ```
+
+Driver hardware parameter files are installed from:
+
+```text
+lib/motor_manager/hardware/<driver>/param/
+```
+
+The runtime bridge configs reference these files with `package://motor_manager/...`
+paths. Dynamixel model control tables are kept under
+`lib/motor_manager/hardware/dynamixel/param/control_table/`.
+
+Robot motion CSV files are installed from:
+
+```text
+lib/robot_manager/robots/motions/
+```
+
+Robot YAML files reference them with `package://robot_manager/robots/motions`.
 
 ## 한국어 버전
 
@@ -178,11 +230,24 @@ ros2 launch motion_control_bridge motor_manager_node.launch.py \
   config_file:=~/colcon_ws/src/ros2/motion_system_ros2/motion_control_bridge/config/example_socketcan_cubemars.yaml
 ```
 
+bridge 예제 설정은 controller를 하나씩만 갖는 파일로 나뉘어 있습니다:
+
+| File | Communication | Driver |
+| --- | --- | --- |
+| `example_canopen_zeroerr.yaml` | CANopen | ZeroErr |
+| `example_ethercat_zeroerr.yaml` | EtherCAT | ZeroErr |
+| `example_ethercat_minas.yaml` | EtherCAT | Panasonic MINAS |
+| `example_serial_dynamixel.yaml` | Serial | Dynamixel |
+| `example_socketcan_cubemars.yaml` | SocketCAN | CubeMars |
+
 그 외 유용한 launch 명령:
 
 ```bash
 # motor manager와 함께 RQt 모터 제어 UI 실행
 ros2 launch motion_control_rqt display_motor_manager_node.launch.py
+
+# motor manager와 rocking-chair robot 제어를 포함한 RQt UI 실행
+ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py
 
 # Behringer X-Touch MIDI bridge
 ros2 launch xtouch_midi xtouch_node.launch.py
@@ -197,6 +262,28 @@ ros2 launch iahrs_driver iahrs_driver.py
 ros2 launch p9n_bringup teleop.launch.py hw_type:=DualSense
 ```
 
+RQt는 두 가지 launch 모드를 가진다:
+
+- `display_motor_manager_node.launch.py`는 기본 `MotorManagerWidget`만 열어서
+  motor 상태 확인과 직접 motor command 전송을 제공한다.
+- `rocking_chair_robot_manager.launch.py`는 `motor_manager_node`,
+  `robot_manager_node`, RQt를 함께 실행하고 `use_robot_manager_widget:=true`를
+  전달한다. 이 모드에서는 `MotorManagerWidget`을 상속한 `RobotManagerWidget`이
+  실행되며 두 번째 `Robot Manager` 탭이 추가된다.
+
+`Robot Manager` 탭은 `/joy`로 `sensor_msgs/msg/Joy` 메시지를 발행한다.
+따라서 `robot_manager_node`는 joystick 입력과 같은 button mapping으로 동작한다:
+
+| Button | Joy index | Robot action |
+| --- | --- | --- |
+| `Disable` | `0` / Cross | motor controller disable |
+| `Enable` | `9` / Start | motor controller enable |
+| `Move` | `1` / Circle | Move |
+| `Home` | `2` / Triangle | Home |
+| `Stop` | `3` / Square | Stop |
+| `L1` | `4` | 이전 robot 선택 |
+| `R1` | `5` | 다음 robot 선택 |
+
 ### Available Communication Methods
 
 모터 통신 backend:
@@ -205,13 +292,13 @@ ros2 launch p9n_bringup teleop.launch.py hw_type:=DualSense
 - `canopen`: SocketCAN 기반 CANopen 통신.
 - `socketcan`: raw SocketCAN 통신.
 - `serial`: Dynamixel Protocol 2.0 장치를 위한 serial 통신.
-- `dynamixel`: motor manager 설정에서 Dynamixel 지향 master type으로 사용할 수 있습니다.
 
 ROS 및 장치 인터페이스:
 
 - 모터 명령, 모터 상태, IMU 데이터, reset 서비스를 위한 ROS 2 topic/service.
 - Behringer X-Touch 장치를 위한 MIDI 입출력.
-- PlayStation 컨트롤러를 위한 Linux joystick 입력.
+- PlayStation 컨트롤러를 위한 Linux joystick 입력과 RQt가 발행하는
+  `sensor_msgs/msg/Joy` robot command.
 - iAHRS 장치를 위한 serial IMU 통신.
 
 ### Available Drivers
@@ -234,3 +321,21 @@ ROS 및 장치 인터페이스:
 ```text
 ros2/motion_system_ros2/motion_control_bridge/config/
 ```
+
+driver 하드웨어 파라미터 파일은 다음 위치에서 설치됩니다:
+
+```text
+lib/motor_manager/hardware/<driver>/param/
+```
+
+런타임 bridge 설정은 이 파일들을 `package://motor_manager/...` 경로로 참조합니다.
+Dynamixel model control table은
+`lib/motor_manager/hardware/dynamixel/param/control_table/` 아래에 있습니다.
+
+robot motion CSV 파일은 다음 위치에서 설치됩니다:
+
+```text
+lib/robot_manager/robots/motions/
+```
+
+robot YAML 파일은 이를 `package://robot_manager/robots/motions`로 참조합니다.
