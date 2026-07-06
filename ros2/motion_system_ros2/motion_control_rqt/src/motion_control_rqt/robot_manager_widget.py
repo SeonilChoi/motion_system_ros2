@@ -18,8 +18,8 @@ JOY_BUTTON_CROSS = 0
 JOY_BUTTON_CIRCLE = 1
 JOY_BUTTON_TRIANGLE = 2
 JOY_BUTTON_SQUARE = 3
-JOY_BUTTON_L1 = 4
-JOY_BUTTON_R1 = 5
+JOY_BUTTON_PREVIOUS = 4
+JOY_BUTTON_NEXT = 5
 JOY_BUTTON_START = 9
 
 
@@ -45,8 +45,8 @@ class RobotManagerWidget(MotorManagerWidget):
         home_button = QPushButton('Home', command_box)
         stop_button = QPushButton('Stop', command_box)
         move_button = QPushButton('Move', command_box)
-        l1_button = QPushButton('L1', command_box)
-        r1_button = QPushButton('R1', command_box)
+        previous_button = QPushButton('Previous', command_box)
+        next_button = QPushButton('Next', command_box)
 
         disable_button.clicked.connect(
             lambda: self._publish_joy_button(JOY_BUTTON_CROSS)
@@ -63,11 +63,11 @@ class RobotManagerWidget(MotorManagerWidget):
         move_button.clicked.connect(
             lambda: self._publish_joy_button(JOY_BUTTON_CIRCLE)
         )
-        l1_button.clicked.connect(
-            lambda: self._publish_joy_button(JOY_BUTTON_L1)
+        previous_button.clicked.connect(
+            lambda: self._publish_joy_button(JOY_BUTTON_PREVIOUS)
         )
-        r1_button.clicked.connect(
-            lambda: self._publish_joy_button(JOY_BUTTON_R1)
+        next_button.clicked.connect(
+            lambda: self._publish_joy_button(JOY_BUTTON_NEXT)
         )
 
         command_layout.addWidget(disable_button)
@@ -75,8 +75,8 @@ class RobotManagerWidget(MotorManagerWidget):
         command_layout.addWidget(home_button)
         command_layout.addWidget(stop_button)
         command_layout.addWidget(move_button)
-        command_layout.addWidget(l1_button)
-        command_layout.addWidget(r1_button)
+        command_layout.addWidget(previous_button)
+        command_layout.addWidget(next_button)
 
         robot_tab_layout.addWidget(command_box)
         robot_tab_layout.addStretch(1)

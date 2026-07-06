@@ -8,12 +8,37 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def default_source_motion_directory(*package_share_paths):
+    for package_share_path in package_share_paths:
+        path = os.path.abspath(package_share_path)
+        while True:
+            candidate = os.path.join(
+                path,
+                'src',
+                'lib',
+                'robot_manager',
+                'robots',
+                'motions',
+            )
+            if os.path.isdir(candidate):
+                return candidate
+
+            parent = os.path.dirname(path)
+            if parent == path:
+                break
+            path = parent
+
+    return ''
+
+
 def generate_launch_description():
     motor_config_file = LaunchConfiguration('motor_config_file')
     robot_config_file = LaunchConfiguration('robot_config_file')
     record_motion = LaunchConfiguration('record_motion')
     record_file_name = LaunchConfiguration('record_file_name')
+    record_directory = LaunchConfiguration('record_directory')
 
+    motion_control_midi_pkg_share = get_package_share_directory('motion_control_midi')
     motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
     motion_control_robot_pkg_share = get_package_share_directory('motion_control_robot')
     default_motor_config_file = os.path.join(
@@ -25,6 +50,10 @@ def generate_launch_description():
         motion_control_robot_pkg_share,
         'config',
         'rocking_chair.yaml',
+    )
+    default_record_directory = default_source_motion_directory(
+        motion_control_midi_pkg_share,
+        motion_control_robot_pkg_share,
     )
 
     return LaunchDescription([
@@ -47,6 +76,11 @@ def generate_launch_description():
             'record_file_name',
             default_value='rocking_chair.csv',
             description='CSV file name for recorded motion data.',
+        ),
+        DeclareLaunchArgument(
+            'record_directory',
+            default_value=default_record_directory,
+            description='Directory where recorded motion CSV files are saved.',
         ),
         Node(
             package='motion_control_bridge',
@@ -77,6 +111,7 @@ def generate_launch_description():
                 'robot_config_file': robot_config_file,
                 'record_motion': ParameterValue(record_motion, value_type=bool),
                 'record_file_name': record_file_name,
+                'record_directory': record_directory,
             }],
         ),
     ])

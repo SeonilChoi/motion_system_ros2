@@ -72,8 +72,8 @@ The `Robot Manager` tab publishes `sensor_msgs/msg/Joy` messages on `/joy`:
 | `Move` | `1` / Circle | Move |
 | `Home` | `2` / Triangle | Home |
 | `Stop` | `3` / Square | Stop |
-| `L1` | `4` | Select previous robot |
-| `R1` | `5` | Select next robot |
+| `Previous` | `4` / L1 | Select previous robot |
+| `Next` | `5` / R1 | Select next robot |
 
 Run the MIDI control flow.
 
@@ -206,8 +206,8 @@ ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py
 | `Move` | `1` / Circle | Move |
 | `Home` | `2` / Triangle | Home |
 | `Stop` | `3` / Square | Stop |
-| `L1` | `4` | 이전 robot 선택 |
-| `R1` | `5` | 다음 robot 선택 |
+| `Previous` | `4` / L1 | 이전 robot 선택 |
+| `Next` | `5` / R1 | 다음 robot 선택 |
 
 MIDI control flow를 실행한다.
 

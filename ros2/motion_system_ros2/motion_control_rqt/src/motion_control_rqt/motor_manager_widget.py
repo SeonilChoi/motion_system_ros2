@@ -72,6 +72,11 @@ class MotorManagerWidget(QMainWindow):
         self._node.declare_parameter('config_file', '')
         self._config_file = str(self._node.get_parameter('config_file').value)
         self._master_infos, self._motor_infos = self._load_motor_infos()
+        self._motor_info_by_controller_index = {
+            int(motor_info['controller_index']): motor_info
+            for motor_info in self._motor_infos
+            if motor_info.get('controller_index') is not None
+        }
 
         self._motor_status = None
         self._is_visible = False
@@ -221,17 +226,23 @@ class MotorManagerWidget(QMainWindow):
         for master in self._master_infos:
             n_slaves += master['number_of_slaves']
 
+        max_controller_index = max(
+            self._motor_info_by_controller_index.keys(),
+            default=-1,
+        )
+        n_controllers = max(n_slaves, max_controller_index + 1)
+
         msg = MotorStatus()
-        msg.number_of_target_interfaces = [0] * n_slaves
-        msg.target_interface_id = [Int8MultiArray(data=[0] * n_slaves) for _ in range(n_slaves)]
-        msg.controller_index = [i for i in range(n_slaves)]
-        msg.controlword = [0] * n_slaves
-        msg.statusword = [0] * n_slaves
-        msg.errorcode = [0] * n_slaves
-        msg.position = [0.0] * n_slaves
-        msg.velocity = [0.0] * n_slaves
-        msg.effort = [0.0] * n_slaves
-        return msg, n_slaves
+        msg.number_of_target_interfaces = [0] * n_controllers
+        msg.target_interface_id = [Int8MultiArray() for _ in range(n_controllers)]
+        msg.controller_index = [i for i in range(n_controllers)]
+        msg.controlword = [0] * n_controllers
+        msg.statusword = [0] * n_controllers
+        msg.errorcode = [0] * n_controllers
+        msg.position = [0.0] * n_controllers
+        msg.velocity = [0.0] * n_controllers
+        msg.effort = [0.0] * n_controllers
+        return msg, n_controllers
 
     def _set_current_value_label(self, profile_mode, value):
         if profile_mode == 0:
@@ -290,27 +301,31 @@ class MotorManagerWidget(QMainWindow):
         if self._current_controller_index is None:
             return
 
-        msg, n_slaves = self._initialize_motor_status_msg()
-        
-        motor_info = self._motor_infos[self._current_controller_index]
+        msg, _ = self._initialize_motor_status_msg()
+
+        controller_index = self._current_controller_index
+        motor_info = self._motor_info_by_controller_index.get(controller_index)
+        if motor_info is None or controller_index >= len(msg.controller_index):
+            return
+
         if motor_info['profile_mode'] == 0:
             self._set_position_command(
-                msg, motor_info, self._current_controller_index, value
+                msg, motor_info, controller_index, value
             )
 
         elif motor_info['profile_mode'] == 1:
-            msg.number_of_target_interfaces[self._current_controller_index] = 1
-            msg.target_interface_id[self._current_controller_index] = Int8MultiArray(
+            msg.number_of_target_interfaces[controller_index] = 1
+            msg.target_interface_id[controller_index] = Int8MultiArray(
                 data=[ID_TARGET_VELOCITY]
             )
-            msg.velocity[self._current_controller_index] = value
+            msg.velocity[controller_index] = value
 
         elif motor_info['profile_mode'] == 2:
-            msg.number_of_target_interfaces[self._current_controller_index] = 1
-            msg.target_interface_id[self._current_controller_index] = Int8MultiArray(
+            msg.number_of_target_interfaces[controller_index] = 1
+            msg.target_interface_id[controller_index] = Int8MultiArray(
                 data=[ID_TARGET_EFFORT]
             )
-            msg.effort[self._current_controller_index] = value
+            msg.effort[controller_index] = value
             
         self._motor_command_publisher.publish(msg)
 
@@ -320,10 +335,16 @@ class MotorManagerWidget(QMainWindow):
         if self._motor_status is None:
             return
 
+        motor_info = self._motor_info_by_controller_index.get(index)
+        if motor_info is None:
+            return
+
         self._current_controller_index = index
         self._select_motor_button.setText(f"Motor {index}")
 
-        motor_info = self._motor_infos[index]
+        if index >= len(self._motor_status.position):
+            return
+
         if motor_info["profile_mode"] == 0:
             lower = int(motor_info["lower"] * 100)
             upper = int(motor_info["upper"] * 100)
@@ -361,8 +382,14 @@ class MotorManagerWidget(QMainWindow):
             self._motor_infos_plot_widget.clear()
             self._motor_infos_plot_widget.addLegend(offset=(10, 10))
 
-            motor_info = self._motor_infos[self._current_controller_index]
+            motor_info = self._motor_info_by_controller_index.get(self._current_controller_index)
+            if motor_info is None:
+                return
+
             idx = motor_info["controller_index"]
+            if any(idx >= len(raw) for raw in self._positions):
+                return
+
             pos = [raw[idx] for raw in self._positions]
             vel = [raw[idx] for raw in self._velocities]
             tau = [raw[idx] for raw in self._efforts]

@@ -21,8 +21,8 @@ JOY_BUTTON_CIRCLE = 1
 JOY_BUTTON_TRIANGLE = 2
 JOY_BUTTON_SQUARE = 3
 
-JOY_BUTTON_L1 = 4
-JOY_BUTTON_R1 = 5
+JOY_BUTTON_PREVIOUS = 4
+JOY_BUTTON_NEXT = 5
 JOY_BUTTON_START = 9
 
 
@@ -155,6 +155,8 @@ class RobotManagerNode(Node):
         if not self.is_valid_joint_status:
             return
 
+        should_publish_motor_command = False
+
         if self.joy_buttons[JOY_BUTTON_CROSS] and not self.joy_buttons_prev[JOY_BUTTON_CROSS]:
             self.publish_controller_request(0)
         elif self.joy_buttons[JOY_BUTTON_START] and not self.joy_buttons_prev[JOY_BUTTON_START]:
@@ -169,11 +171,11 @@ class RobotManagerNode(Node):
                 self.robot_actions[robot_action_index].action = Action.STOP
 
         # Select the robot by the DPAD
-        if self.joy_buttons[JOY_BUTTON_L1] and not self.joy_buttons_prev[JOY_BUTTON_L1]:
+        if self.joy_buttons[JOY_BUTTON_PREVIOUS] and not self.joy_buttons_prev[JOY_BUTTON_PREVIOUS]:
             selected_action_index = self.selected_robot_action_index()
             selected_action_index = selected_action_index - 1 if selected_action_index > 0 else self.number_of_robots - 1
             self.selected_robot_index = self.robot_indices[selected_action_index]
-        elif self.joy_buttons[JOY_BUTTON_R1] and not self.joy_buttons_prev[JOY_BUTTON_R1]:
+        elif self.joy_buttons[JOY_BUTTON_NEXT] and not self.joy_buttons_prev[JOY_BUTTON_NEXT]:
             selected_action_index = (self.selected_robot_action_index() + 1) % self.number_of_robots
             self.selected_robot_index = self.robot_indices[selected_action_index]
 
@@ -181,11 +183,18 @@ class RobotManagerNode(Node):
         for btn, action in self.joy_button_action.items():
             if self.joy_buttons[btn] and not self.joy_buttons_prev[btn]:
                 self.robot_actions[self.selected_robot_action_index()].action = action
+                should_publish_motor_command = True
                 break
 
+        should_publish_motor_command = (
+            should_publish_motor_command or
+            any(robot_action.action != Action.STOP for robot_action in self.robot_actions)
+        )
+
         # Send the action to the robot
-        commands: joint_frame_t = self.robot_manager.set_action_frames(self.robot_actions)
-        self.publish_motor_command(commands)
+        if should_publish_motor_command:
+            commands: joint_frame_t = self.robot_manager.set_action_frames(self.robot_actions)
+            self.publish_motor_command(commands)
 
         self.joy_buttons_prev = self.joy_buttons.copy()
 

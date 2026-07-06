@@ -7,7 +7,7 @@ robot:
     controller_indices: [0]
     target_interface_ids:
       - [0, 1]
-    home_positions: [0.0]
+    home_positions: [50.0]
     home_duration: 5.0
-    move_duration: 30.0
+    move_duration: 7.0
     motion_data_file_path: "package://robot_manager/robots/motions"

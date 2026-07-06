@@ -121,6 +121,7 @@ public:
     declare_parameter<std::string>("robot_config_file", "");
     declare_parameter<bool>("record_motion", false);
     declare_parameter<std::string>("record_file_name", "recorded_motion.csv");
+    declare_parameter<std::string>("record_directory", "");
 
     get_parameter("robot_config_file", robot_config_file_);
 
@@ -560,6 +561,12 @@ private:
 
   std::filesystem::path motion_record_directory() const
   {
+    std::string record_directory;
+    get_parameter("record_directory", record_directory);
+    if (!record_directory.empty()) {
+      return std::filesystem::path(record_directory).lexically_normal();
+    }
+
     if (robot_config_file_.empty()) {
       throw std::runtime_error("robot_config_file parameter must be set.");
     }
@@ -636,7 +643,9 @@ private:
       return;
     }
     motion_recording_rows_.clear();
+    motion_recording_start_time_ = std::chrono::steady_clock::now();
     motion_recording_active_ = true;
+    RCLCPP_INFO(get_logger(), "Motion recording started.");
   }
 
   void stop_motion_recording(bool save)
@@ -653,6 +662,10 @@ private:
 
     if (save && !rows.empty()) {
       save_motion_record(rows);
+    } else if (save) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Motion recording stopped, but no position samples were captured.");
     }
   }
 
@@ -689,24 +702,56 @@ private:
       return;
     }
 
-    motion_recording_rows_.resize(row_count);
-    for (std::size_t row = 0; row < motion_recording_rows_.size(); ++row) {
+    const double elapsed_sec = std::chrono::duration<double>(
+      std::chrono::steady_clock::now() - motion_recording_start_time_).count();
+
+    motion_recording_rows_.resize(row_count + 1);
+    motion_recording_rows_[0].push_back(elapsed_sec);
+    for (std::size_t row = 0; row < row_count; ++row) {
       const double value =
         has_sample[row] ? sample[row] :
-        (motion_recording_rows_[row].empty() ? 0.0 : motion_recording_rows_[row].back());
-      motion_recording_rows_[row].push_back(value);
+        (motion_recording_rows_[row + 1].empty() ? 0.0 : motion_recording_rows_[row + 1].back());
+      motion_recording_rows_[row + 1].push_back(value);
     }
   }
 
   void save_motion_record(const std::vector<std::vector<double>> & rows) const
   {
-    const std::filesystem::path path = motion_record_path();
+    std::filesystem::path path;
+    try {
+      path = motion_record_path();
+    } catch (const std::exception & e) {
+      RCLCPP_ERROR(get_logger(), "Failed to resolve motion record path: %s", e.what());
+      return;
+    }
+
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     if (ec) {
+      RCLCPP_ERROR(
+        get_logger(),
+        "Failed to create motion record directory '%s': %s",
+        path.parent_path().string().c_str(),
+        ec.message().c_str());
       return;
     }
-    write_motion_csv(path, rows);
+
+    if (!write_motion_csv(path, rows)) {
+      RCLCPP_ERROR(
+        get_logger(),
+        "Failed to write motion record '%s'.",
+        path.string().c_str());
+      return;
+    }
+
+    const std::size_t sample_count = rows.empty() ? 0 : rows.front().size();
+    const std::size_t controller_row_count = rows.empty() ? 0 : rows.size() - 1;
+    RCLCPP_INFO(
+      get_logger(),
+      "Saved motion record '%s' with %zu controller rows and %zu samples.",
+      path.string().c_str(),
+      controller_row_count,
+      sample_count);
   }
 
   rclcpp::Subscription<MidiMsg>::SharedPtr midi_sub_;
@@ -721,6 +766,7 @@ private:
   std::mutex state_mutex_;
   std::mutex recording_mutex_;
   std::vector<std::vector<double>> motion_recording_rows_;
+  std::chrono::steady_clock::time_point motion_recording_start_time_{};
   std::string robot_config_file_;
   bool motion_recording_active_{};
   std::chrono::milliseconds publish_period_{5};
