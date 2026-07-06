@@ -4,7 +4,6 @@ This repository is a ROS 2 workspace source tree for motor control and related
 operator interfaces. It includes a YAML-configured motor manager, ROS 2 bridge
 nodes, controller input support, MIDI control support, and an iAHRS IMU driver.
 
-hi
 ## Clone
 
 Clone this repository as the `src` directory of a colcon workspace:
@@ -31,14 +30,14 @@ ROS 2 Humble:
 cd ~/colcon_ws
 source /opt/ros/humble/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install
+colcon build
 source install/setup.bash
 ```
 
 For a motor-manager-only build:
 
 ```bash
-colcon build --symlink-install --packages-up-to motion_control_bridge
+colcon build --packages-up-to motion_control_bridge
 ```
 
 ## Launch
