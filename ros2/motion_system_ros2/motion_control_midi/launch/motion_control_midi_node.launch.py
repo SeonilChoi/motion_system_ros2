@@ -37,6 +37,7 @@ def generate_launch_description():
     record_motion = LaunchConfiguration('record_motion')
     record_file_name = LaunchConfiguration('record_file_name')
     record_directory = LaunchConfiguration('record_directory')
+    debug_mode = LaunchConfiguration('debug_mode')
 
     motion_control_midi_pkg_share = get_package_share_directory('motion_control_midi')
     motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
@@ -82,6 +83,11 @@ def generate_launch_description():
             default_value=default_record_directory,
             description='Directory where recorded motion CSV files are saved.',
         ),
+        DeclareLaunchArgument(
+            'debug_mode',
+            default_value='false',
+            description='Use raw encoder values instead of position for target position commands.',
+        ),
         Node(
             package='motion_control_bridge',
             executable='motor_manager_node',
@@ -89,6 +95,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': motor_config_file,
+                'debug_mode': ParameterValue(debug_mode, value_type=bool),
             }],
         ),
         Node(

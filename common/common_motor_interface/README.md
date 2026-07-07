@@ -35,6 +35,7 @@ status data.
 | `controlword` | `uint16_t` | CiA-402 control word. | `0` |
 | `statusword` | `uint16_t` | CiA-402 status word. | `0` |
 | `errorcode` | `uint16_t` | Driver error code. | `0` |
+| `encoder` | `int32_t` | Raw motor encoder value. In debug mode, target position commands use this value directly. | `0` |
 | `position` | `double` | Position value, such as degrees or millimeters. | `0` |
 | `velocity` | `double` | Velocity value, such as degrees per second or millimeters per second. | `0` |
 | `effort` | `double` | Effort value, such as Nm or N. | `0` |
@@ -87,6 +88,7 @@ colcon build --packages-select common_motor_interface
 | `controlword` | `uint16_t` | CiA-402 control word | `0` |
 | `statusword` | `uint16_t` | CiA-402 status word | `0` |
 | `errorcode` | `uint16_t` | 드라이버의 에러 코드 | `0` |
+| `encoder` | `int32_t` | 모터 raw encoder 값. debug mode에서는 position target 명령에 이 값을 그대로 사용 | `0` |
 | `position` | `double` | 위치 값 (e.g. degree, mm) | `0` |
 | `velocity` | `double` | 속도 값 (e.g. degree/s, mm/s) | `0` |
 | `effort` | `double` | 힘 값 (e.g. Nm, N) | `0` |

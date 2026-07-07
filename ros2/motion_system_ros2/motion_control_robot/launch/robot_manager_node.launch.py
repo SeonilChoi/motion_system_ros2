@@ -5,6 +5,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -37,11 +38,17 @@ def generate_launch_description():
         default_value='DualSense',
         description='PlayStation controller hardware type used by p9n_node.',
     )
+    debug_mode_arg = DeclareLaunchArgument(
+        'debug_mode',
+        default_value='false',
+        description='Use raw encoder values instead of position for target position commands.',
+    )
 
     return LaunchDescription([
         robot_config_file_arg,
         motor_config_file_arg,
         hw_type_arg,
+        debug_mode_arg,
         Node(
             package='joy',
             executable='joy_node',
@@ -64,6 +71,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': LaunchConfiguration('motor_config_file'),
+                'debug_mode': ParameterValue(LaunchConfiguration('debug_mode'), value_type=bool),
             }],
         ),
         Node(

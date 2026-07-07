@@ -42,7 +42,9 @@ MotorManagerNode::MotorManagerNode(const rclcpp::NodeOptions& options)
             "`ros2 launch motion_control_bridge motor_manager_node.launch.py`.");
     }
 
-    motor_manager_ = std::make_unique<motor_manager::MotorManager>(config_file_);
+    const bool debug_mode = this->declare_parameter<bool>("debug_mode", false);
+
+    motor_manager_ = std::make_unique<motor_manager::MotorManager>(config_file_, debug_mode);
 
     manager_run_thread_ = std::thread([this]() {
         try {
@@ -64,7 +66,7 @@ MotorManagerNode::~MotorManagerNode()
 }
 
 void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
-{    
+{
     const size_t size = std::min({
         msg->controller_index.size(),
         static_cast<size_t>(motor_interface::MAX_CONTROLLER_SIZE),
@@ -73,8 +75,13 @@ void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
     motor_interface::motor_frame_t motor_frame[motor_interface::MAX_CONTROLLER_SIZE] = {};
 
     for (uint8_t i = 0; i < static_cast<uint8_t>(size); i++) {
+        const size_t requested_if_count = i < msg->number_of_target_interfaces.size() ?
+            static_cast<size_t>(msg->number_of_target_interfaces[i]) : 0;
+        const size_t target_data_count = i < msg->target_interface_id.size() ?
+            msg->target_interface_id[i].data.size() : 0;
         const size_t n_if = std::min({
-            static_cast<size_t>(msg->number_of_target_interfaces[i]),
+            requested_if_count,
+            target_data_count,
             static_cast<size_t>(motor_interface::MAX_INTERFACE_SIZE),
         });
         motor_frame[i].number_of_target_interfaces = static_cast<uint8_t>(n_if);
@@ -83,12 +90,13 @@ void MotorManagerNode::motor_command_callback(const MotorStatus::SharedPtr msg)
             motor_frame[i].target_interface_id[j] = msg->target_interface_id[i].data[j];
         }
         motor_frame[i].controller_index = msg->controller_index[i];
-        motor_frame[i].controlword = msg->controlword[i];
+        if (i < msg->controlword.size()) motor_frame[i].controlword = msg->controlword[i];
         //motor_frame[i].statusword = msg->statusword[i];
         //motor_frame[i].errorcode = msg->errorcode[i];
-        motor_frame[i].position = msg->position[i];
-        motor_frame[i].velocity = msg->velocity[i];
-        motor_frame[i].effort = msg->effort[i];
+        if (i < msg->encoder.size()) motor_frame[i].encoder = msg->encoder[i];
+        if (i < msg->position.size()) motor_frame[i].position = msg->position[i];
+        if (i < msg->velocity.size()) motor_frame[i].velocity = msg->velocity[i];
+        if (i < msg->effort.size()) motor_frame[i].effort = msg->effort[i];
     }
 
     motor_manager_->write(motor_frame, static_cast<uint8_t>(size));
@@ -119,6 +127,7 @@ void MotorManagerNode::timer_callback()
     msg.controlword.resize(n);
     msg.statusword.resize(n);
     msg.errorcode.resize(n);
+    msg.encoder.resize(n);
     msg.position.resize(n);
     msg.velocity.resize(n);
     msg.effort.resize(n);
@@ -128,6 +137,7 @@ void MotorManagerNode::timer_callback()
         msg.controlword[i] = status[i].controlword;
         msg.statusword[i] = status[i].statusword;
         msg.errorcode[i] = status[i].errorcode;
+        msg.encoder[i] = status[i].encoder;
         msg.position[i] = status[i].position;
         msg.velocity[i] = status[i].velocity;
         msg.effort[i] = status[i].effort;

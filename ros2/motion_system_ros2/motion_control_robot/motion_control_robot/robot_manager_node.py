@@ -128,6 +128,7 @@ class RobotManagerNode(Node):
         ]
         msg.controller_index = [int(index) for index in commands.controller_index]
         msg.controlword = [int(controlword) for controlword in commands.controlword]
+        msg.encoder = [0] * len(msg.controller_index)
         msg.position = [float(position) for position in commands.position]
         msg.velocity = [float(velocity) for velocity in commands.velocity]
         msg.effort = [float(effort) for effort in commands.effort]

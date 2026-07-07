@@ -452,6 +452,7 @@ private:
     msg.controlword.assign(n, 0);
     msg.statusword.assign(n, 0);
     msg.errorcode.assign(n, 0);
+    msg.encoder.assign(n, 0);
     msg.position.assign(n, 0.0);
     msg.velocity.assign(n, 0.0);
     msg.effort.assign(n, 0.0);

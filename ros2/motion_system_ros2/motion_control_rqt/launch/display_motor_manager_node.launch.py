@@ -3,6 +3,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 import os
 
@@ -20,6 +21,11 @@ def generate_launch_description():
         default_value=default_motor_config,
         description='Absolute path to motor_manager YAML (masters / drivers).',
     )
+    debug_mode_arg = DeclareLaunchArgument(
+        'debug_mode',
+        default_value='false',
+        description='Use raw encoder values instead of position for target position commands.',
+    )
 
     motor_manager = Node(
         package='motion_control_bridge',
@@ -28,6 +34,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'config_file': LaunchConfiguration('motor_config_file'),
+            'debug_mode': ParameterValue(LaunchConfiguration('debug_mode'), value_type=bool),
         }],
     )
 
@@ -39,11 +46,13 @@ def generate_launch_description():
         arguments=['--force-discover'],
         parameters=[{
             'config_file': LaunchConfiguration('motor_config_file'),
+            'debug_mode': ParameterValue(LaunchConfiguration('debug_mode'), value_type=bool),
         }],
     )
 
     return LaunchDescription([
         motor_config_file_arg,
+        debug_mode_arg,
         motor_manager,
         motion_control,
     ])

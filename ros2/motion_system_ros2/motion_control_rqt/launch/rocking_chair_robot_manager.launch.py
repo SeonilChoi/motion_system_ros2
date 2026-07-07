@@ -5,11 +5,13 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
     motor_config_file = LaunchConfiguration('motor_config_file')
     robot_config_file = LaunchConfiguration('robot_config_file')
+    debug_mode = LaunchConfiguration('debug_mode')
 
     motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
     motion_control_robot_pkg_share = get_package_share_directory('motion_control_robot')
@@ -36,6 +38,11 @@ def generate_launch_description():
             default_value=default_robot_config_file,
             description='Absolute path to robot_manager YAML.',
         ),
+        DeclareLaunchArgument(
+            'debug_mode',
+            default_value='false',
+            description='Use raw encoder values instead of position for target position commands.',
+        ),
         Node(
             package='motion_control_bridge',
             executable='motor_manager_node',
@@ -43,6 +50,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': motor_config_file,
+                'debug_mode': ParameterValue(debug_mode, value_type=bool),
             }],
         ),
         Node(
@@ -62,6 +70,7 @@ def generate_launch_description():
             arguments=['--force-discover'],
             parameters=[{
                 'config_file': motor_config_file,
+                'debug_mode': ParameterValue(debug_mode, value_type=bool),
                 'use_robot_manager_widget': True,
             }],
         ),

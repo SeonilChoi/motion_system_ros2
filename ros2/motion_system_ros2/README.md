@@ -46,6 +46,12 @@ Run only the motor manager bridge node.
 ros2 launch motion_control_bridge motor_manager_node.launch.py
 ```
 
+To send target positions as raw encoder values, enable debug mode:
+
+```bash
+ros2 launch motion_control_bridge motor_manager_node.launch.py debug_mode:=true
+```
+
 Run the RQt UI with the motor manager bridge.
 
 ```bash
@@ -129,6 +135,7 @@ defined by `motion_data_file_path` in the robot YAML.
 | `controlword` | `uint16[]` |
 | `statusword` | `uint16[]` |
 | `errorcode` | `uint16[]` |
+| `encoder` | `int32[]` |
 | `position` | `float64[]` |
 | `velocity` | `float64[]` |
 | `effort` | `float64[]` |
@@ -177,6 +184,12 @@ motor manager bridge node만 실행한다.
 
 ```bash
 ros2 launch motion_control_bridge motor_manager_node.launch.py
+```
+
+target position을 raw encoder 값으로 보내려면 debug mode를 켠다.
+
+```bash
+ros2 launch motion_control_bridge motor_manager_node.launch.py debug_mode:=true
 ```
 
 motor manager bridge와 함께 RQt UI를 실행한다.
@@ -263,6 +276,7 @@ CSV는 `lib/robot_manager/robots/motions`에 있으며 robot YAML에서
 | `controlword` | `uint16[]` |
 | `statusword` | `uint16[]` |
 | `errorcode` | `uint16[]` |
+| `encoder` | `int32[]` |
 | `position` | `float64[]` |
 | `velocity` | `float64[]` |
 | `effort` | `float64[]` |
