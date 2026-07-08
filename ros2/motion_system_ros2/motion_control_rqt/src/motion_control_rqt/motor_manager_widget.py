@@ -35,6 +35,10 @@ ID_TARGET_POSITION = 1
 ID_TARGET_VELOCITY = 2
 ID_TARGET_EFFORT = 3
 
+REQUEST_DISABLE = 0
+REQUEST_ENABLE = 1
+REQUEST_NONE = 2
+
 CW_NEW_SET_POINT_ZEROERR = 0x103F
 CW_NEW_SET_POINT_MINAS = 0x003F
 CW_SOCKETCAN_SET_POINT = 0x0001
@@ -71,9 +75,9 @@ class MotorManagerWidget(QMainWindow):
         self._current_controller_index = None
         
         self._node.declare_parameter('config_file', '')
-        self._node.declare_parameter('debug_mode', False)
+        self._node.declare_parameter('jog_mode', False)
         self._config_file = str(self._node.get_parameter('config_file').value)
-        self._debug_mode = bool(self._node.get_parameter('debug_mode').value)
+        self._jog_mode = bool(self._node.get_parameter('jog_mode').value)
         self._master_infos, self._motor_infos = self._load_motor_infos()
         self._motor_info_by_controller_index = {
             int(motor_info['controller_index']): motor_info
@@ -86,6 +90,22 @@ class MotorManagerWidget(QMainWindow):
         self._positions = []
         self._velocities = []
         self._efforts = []
+        self._jog_current_encoder_label = None
+        self._enable_motor_button = None
+        self._disable_motor_button = None
+
+        self._motor_command_publisher = self._node.create_publisher(
+            MotorStatus,
+            'motion_control/motor_command',
+            self._QOS_REKL5V,
+        )
+        self._request_publisher = self._node.create_publisher(
+            Int8MultiArray,
+            'motion_control/request',
+            self._QOS_REKL5V,
+        )
+
+        self._initialize_widget()
 
         self._motor_status_subscriber = self._node.create_subscription(
             MotorStatus,
@@ -93,13 +113,6 @@ class MotorManagerWidget(QMainWindow):
             self.motor_status_callback,
             self._QOS_REKL5V,
         )
-        self._motor_command_publisher = self._node.create_publisher(
-            MotorStatus,
-            'motion_control/motor_command',
-            self._QOS_REKL5V,
-        )
-
-        self._initialize_widget()
 
 
     def _load_motor_infos(self):
@@ -163,11 +176,34 @@ class MotorManagerWidget(QMainWindow):
 
         first_tab = QWidget()
         first_tab_layout = QVBoxLayout(first_tab)
+        top_control_layout = QHBoxLayout()
 
         reset_button = QPushButton()
         reset_button.setFixedWidth(40)
         reset_button.setIcon(refresh_icon)
         reset_button.clicked.connect(self._on_reset_button_clicked)
+
+        self._select_motor_button = QToolButton()
+        self._select_motor_button.setFixedWidth(300)
+        self._select_motor_button.setText("Select a Motor ...")
+        self._select_motor_button.setPopupMode(QToolButton.MenuButtonPopup)
+        self._add_select_motor_menu()
+
+        self._enable_motor_button = QPushButton("Enable")
+        self._enable_motor_button.setFixedWidth(80)
+        self._enable_motor_button.setEnabled(False)
+        self._enable_motor_button.clicked.connect(self._on_enable_motor_clicked)
+
+        self._disable_motor_button = QPushButton("Disable")
+        self._disable_motor_button.setFixedWidth(80)
+        self._disable_motor_button.setEnabled(False)
+        self._disable_motor_button.clicked.connect(self._on_disable_motor_clicked)
+
+        top_control_layout.addWidget(self._select_motor_button, 0, Qt.AlignLeft)
+        top_control_layout.addWidget(self._enable_motor_button, 0, Qt.AlignLeft)
+        top_control_layout.addWidget(self._disable_motor_button, 0, Qt.AlignLeft)
+        top_control_layout.addStretch()
+        top_control_layout.addWidget(reset_button, 0, Qt.AlignRight)
 
         status_monitor = QGroupBox("Status Monitor", first_tab)
         status_monitor_layout = QVBoxLayout(status_monitor)
@@ -193,63 +229,56 @@ class MotorManagerWidget(QMainWindow):
 
         self._command_slider = QSlider(Qt.Horizontal)
         self._command_slider.valueChanged.connect(self._on_slider_value_changed)
-        self._command_slider.setEnabled(not self._debug_mode)
+        self._command_slider.setEnabled(not self._jog_mode)
 
         self._max_value_label = QLabel()
         self._max_value_label.setFixedWidth(80)
 
-        self._select_motor_button = QToolButton()
-        self._select_motor_button.setFixedWidth(300)
-        self._select_motor_button.setText("Select a Motor ...")
-        self._select_motor_button.setPopupMode(QToolButton.MenuButtonPopup)
-        self._add_select_motor_menu()
-
         command_slider_layout.addWidget(self._cur_val_label)
         command_slider_layout.addWidget(self._command_slider)
         command_slider_layout.addWidget(self._max_value_label)
-        command_slider_layout.addWidget(self._select_motor_button)
 
         command_console_layout.addWidget(command_slider)
 
-        debug_console = QGroupBox("Debug Console", first_tab)
-        debug_console.setEnabled(self._debug_mode)
-        debug_console_layout = QVBoxLayout(debug_console)
+        jog_console = QGroupBox("Jog Console", first_tab)
+        jog_console.setEnabled(self._jog_mode)
+        jog_console_layout = QVBoxLayout(jog_console)
 
         jog_layout = QHBoxLayout()
         forward_button = QPushButton("Forward")
-        forward_button.clicked.connect(self._on_debug_jog_forward_clicked)
+        forward_button.clicked.connect(self._on_jog_forward_clicked)
 
-        self._debug_jog_encoder_text = QPlainTextEdit()
-        self._debug_jog_encoder_text.setFixedHeight(34)
-        self._debug_jog_encoder_text.setPlainText("0")
+        self._jog_encoder_text = QPlainTextEdit()
+        self._jog_encoder_text.setFixedHeight(34)
+        self._jog_encoder_text.setPlainText("0")
 
         backward_button = QPushButton("Backward")
-        backward_button.clicked.connect(self._on_debug_jog_backward_clicked)
+        backward_button.clicked.connect(self._on_jog_backward_clicked)
 
         jog_layout.addWidget(forward_button)
-        jog_layout.addWidget(self._debug_jog_encoder_text)
+        jog_layout.addWidget(self._jog_encoder_text)
         jog_layout.addWidget(backward_button)
-        debug_console_layout.addLayout(jog_layout)
+        jog_console_layout.addLayout(jog_layout)
 
         zero_offset_layout = QHBoxLayout()
-        self._debug_zero_offset_degree_text = QPlainTextEdit()
-        self._debug_zero_offset_degree_text.setFixedHeight(34)
-        self._debug_zero_offset_degree_text.setPlainText("0")
+        self._jog_zero_offset_degree_text = QPlainTextEdit()
+        self._jog_zero_offset_degree_text.setFixedHeight(34)
+        self._jog_zero_offset_degree_text.setPlainText("0")
 
         zero_offset_reset_button = QPushButton("Reset")
-        zero_offset_reset_button.clicked.connect(self._on_debug_zero_offset_reset_clicked)
+        zero_offset_reset_button.clicked.connect(self._on_jog_zero_offset_reset_clicked)
 
-        zero_offset_layout.addWidget(self._debug_zero_offset_degree_text)
+        zero_offset_layout.addWidget(self._jog_zero_offset_degree_text)
         zero_offset_layout.addWidget(zero_offset_reset_button)
-        debug_console_layout.addLayout(zero_offset_layout)
+        jog_console_layout.addLayout(zero_offset_layout)
 
-        self._debug_current_encoder_label = QLabel("current encoder: ")
-        debug_console_layout.addWidget(self._debug_current_encoder_label)
+        self._jog_current_encoder_label = QLabel("current encoder: ")
+        jog_console_layout.addWidget(self._jog_current_encoder_label)
 
-        first_tab_layout.addWidget(reset_button, 0, Qt.AlignRight)
+        first_tab_layout.addLayout(top_control_layout)
         first_tab_layout.addWidget(status_monitor)
         first_tab_layout.addWidget(command_console)
-        first_tab_layout.addWidget(debug_console)
+        first_tab_layout.addWidget(jog_console)
 
         self.q_tab_widget.addTab(first_tab, "Motor Manager")
 
@@ -339,6 +368,39 @@ class MotorManagerWidget(QMainWindow):
             return None
         return self._motor_info_by_controller_index.get(self._current_controller_index)
 
+    def _update_motor_request_buttons(self):
+        enabled = self._current_controller_index is not None
+        if self._enable_motor_button is not None:
+            self._enable_motor_button.setEnabled(enabled)
+        if self._disable_motor_button is not None:
+            self._disable_motor_button.setEnabled(enabled)
+
+    def _publish_motor_request(self, request_value):
+        if self._current_controller_index is None:
+            return
+
+        controller_index = int(self._current_controller_index)
+        max_controller_index = max(
+            self._motor_info_by_controller_index.keys(),
+            default=controller_index,
+        )
+        if self._motor_status is not None and self._motor_status.controller_index:
+            max_controller_index = max(
+                max_controller_index,
+                max(int(index) for index in self._motor_status.controller_index),
+            )
+
+        request = Int8MultiArray()
+        request.data = [REQUEST_NONE] * (max_controller_index + 1)
+        request.data[controller_index] = int(request_value)
+        self._request_publisher.publish(request)
+
+    def _on_enable_motor_clicked(self):
+        self._publish_motor_request(REQUEST_ENABLE)
+
+    def _on_disable_motor_clicked(self):
+        self._publish_motor_request(REQUEST_DISABLE)
+
     def _driver_config(self, config, motor_info):
         driver_id = motor_info.get('driver_id')
         for driver in config.get('drivers', []):
@@ -403,17 +465,20 @@ class MotorManagerWidget(QMainWindow):
 
         return False
 
-    def _update_debug_current_encoder_label(self):
+    def _update_jog_current_encoder_label(self):
+        if self._jog_current_encoder_label is None:
+            return
+
         if self._current_controller_index is None or self._motor_status is None:
-            self._debug_current_encoder_label.setText("current encoder: ")
+            self._jog_current_encoder_label.setText("current encoder: ")
             return
 
         controller_index = self._current_controller_index
         if controller_index >= len(self._motor_status.encoder):
-            self._debug_current_encoder_label.setText("current encoder: ")
+            self._jog_current_encoder_label.setText("current encoder: ")
             return
 
-        self._debug_current_encoder_label.setText(
+        self._jog_current_encoder_label.setText(
             f"current encoder: {int(self._motor_status.encoder[controller_index])}"
         )
 
@@ -424,13 +489,14 @@ class MotorManagerWidget(QMainWindow):
         self._velocities = []
         self._efforts = []
         self._add_select_motor_menu()
-        self._update_debug_current_encoder_label()
+        self._update_motor_request_buttons()
+        self._update_jog_current_encoder_label()
 
     def _on_visible_button_clicked(self):
         self._is_visible = False if self._is_visible else True
 
     def _on_slider_value_changed(self, value):
-        if self._debug_mode:
+        if self._jog_mode:
             return
 
         if self._current_controller_index is None:
@@ -466,14 +532,14 @@ class MotorManagerWidget(QMainWindow):
 
         self._set_current_value_label(motor_info['profile_mode'], value)
 
-    def _on_debug_jog_forward_clicked(self):
-        self._publish_debug_jog_command(1)
+    def _on_jog_forward_clicked(self):
+        self._publish_jog_command(1)
 
-    def _on_debug_jog_backward_clicked(self):
-        self._publish_debug_jog_command(-1)
+    def _on_jog_backward_clicked(self):
+        self._publish_jog_command(-1)
 
-    def _publish_debug_jog_command(self, direction):
-        if not self._debug_mode:
+    def _publish_jog_command(self, direction):
+        if not self._jog_mode:
             return
         if self._current_controller_index is None or self._motor_status is None:
             return
@@ -485,7 +551,7 @@ class MotorManagerWidget(QMainWindow):
         if controller_index >= len(self._motor_status.encoder):
             return
 
-        text = self._debug_jog_encoder_text.toPlainText().strip()
+        text = self._jog_encoder_text.toPlainText().strip()
         try:
             encoder_delta = abs(int(text, 0))
         except ValueError:
@@ -501,8 +567,8 @@ class MotorManagerWidget(QMainWindow):
         self._set_encoder_command(msg, motor_info, controller_index, target_encoder)
         self._motor_command_publisher.publish(msg)
 
-    def _on_debug_zero_offset_reset_clicked(self):
-        if not self._debug_mode:
+    def _on_jog_zero_offset_reset_clicked(self):
+        if not self._jog_mode:
             return
         if self._current_controller_index is None or self._motor_status is None:
             return
@@ -514,7 +580,7 @@ class MotorManagerWidget(QMainWindow):
         if controller_index >= len(self._motor_status.encoder):
             return
 
-        text = self._debug_zero_offset_degree_text.toPlainText().strip()
+        text = self._jog_zero_offset_degree_text.toPlainText().strip()
         try:
             target_degree = float(text)
         except ValueError:
@@ -564,7 +630,8 @@ class MotorManagerWidget(QMainWindow):
 
         self._current_controller_index = index
         self._select_motor_button.setText(f"Motor {index}")
-        self._update_debug_current_encoder_label()
+        self._update_motor_request_buttons()
+        self._update_jog_current_encoder_label()
 
         if index >= len(self._motor_status.position):
             return
@@ -625,7 +692,7 @@ class MotorManagerWidget(QMainWindow):
 
     def motor_status_callback(self, msg):
         self._motor_status = msg
-        self._update_debug_current_encoder_label()
+        self._update_jog_current_encoder_label()
         self._positions.append(msg.position)
         self._velocities.append(msg.velocity)
         self._efforts.append(msg.effort)

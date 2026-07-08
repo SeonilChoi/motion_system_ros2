@@ -8,18 +8,41 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def default_config_file(package_share_path, package_name, file_name):
+    installed_path = os.path.join(package_share_path, 'config', file_name)
+    path = os.path.abspath(package_share_path)
+
+    while True:
+        source_path = os.path.join(
+            path,
+            'src',
+            'ros2',
+            'motion_system_ros2',
+            package_name,
+            'config',
+            file_name,
+        )
+        if os.path.isfile(source_path):
+            return source_path
+
+        parent = os.path.dirname(path)
+        if parent == path:
+            return installed_path
+        path = parent
+
+
 def generate_launch_description():
     motion_control_robot_pkg_share = get_package_share_directory('motion_control_robot')
     motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
 
-    robot_config_file = os.path.join(
+    robot_config_file = default_config_file(
         motion_control_robot_pkg_share,
-        'config',
+        'motion_control_robot',
         'rocking_chair.yaml',
     )
-    motor_config_file = os.path.join(
+    motor_config_file = default_config_file(
         motion_control_bridge_pkg_share,
-        'config',
+        'motion_control_bridge',
         'example_ethercat_zeroerr.yaml',
     )
 
@@ -38,17 +61,17 @@ def generate_launch_description():
         default_value='DualSense',
         description='PlayStation controller hardware type used by p9n_node.',
     )
-    debug_mode_arg = DeclareLaunchArgument(
-        'debug_mode',
+    jog_mode_arg = DeclareLaunchArgument(
+        'jog_mode',
         default_value='false',
-        description='Use raw encoder values instead of position for target position commands.',
+        description='Enable jog commands that use raw encoder targets.',
     )
 
     return LaunchDescription([
         robot_config_file_arg,
         motor_config_file_arg,
         hw_type_arg,
-        debug_mode_arg,
+        jog_mode_arg,
         Node(
             package='joy',
             executable='joy_node',
@@ -71,7 +94,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': LaunchConfiguration('motor_config_file'),
-                'debug_mode': ParameterValue(LaunchConfiguration('debug_mode'), value_type=bool),
+                'jog_mode': ParameterValue(LaunchConfiguration('jog_mode'), value_type=bool),
             }],
         ),
         Node(

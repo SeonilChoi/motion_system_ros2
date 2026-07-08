@@ -8,22 +8,45 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def default_config_file(package_share_path, package_name, file_name):
+    installed_path = os.path.join(package_share_path, 'config', file_name)
+    path = os.path.abspath(package_share_path)
+
+    while True:
+        source_path = os.path.join(
+            path,
+            'src',
+            'ros2',
+            'motion_system_ros2',
+            package_name,
+            'config',
+            file_name,
+        )
+        if os.path.isfile(source_path):
+            return source_path
+
+        parent = os.path.dirname(path)
+        if parent == path:
+            return installed_path
+        path = parent
+
+
 def generate_launch_description():
     motor_config_file = LaunchConfiguration('motor_config_file')
     robot_config_file = LaunchConfiguration('robot_config_file')
-    debug_mode = LaunchConfiguration('debug_mode')
+    jog_mode = LaunchConfiguration('jog_mode')
 
     motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
     motion_control_robot_pkg_share = get_package_share_directory('motion_control_robot')
 
-    default_motor_config_file = os.path.join(
+    default_motor_config_file = default_config_file(
         motion_control_bridge_pkg_share,
-        'config',
+        'motion_control_bridge',
         'example_ethercat_zeroerr.yaml',
     )
-    default_robot_config_file = os.path.join(
+    default_robot_config_file = default_config_file(
         motion_control_robot_pkg_share,
-        'config',
+        'motion_control_robot',
         'rocking_chair.yaml',
     )
 
@@ -39,9 +62,9 @@ def generate_launch_description():
             description='Absolute path to robot_manager YAML.',
         ),
         DeclareLaunchArgument(
-            'debug_mode',
+            'jog_mode',
             default_value='false',
-            description='Use raw encoder values instead of position for target position commands.',
+            description='Enable jog commands that use raw encoder targets.',
         ),
         Node(
             package='motion_control_bridge',
@@ -50,7 +73,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': motor_config_file,
-                'debug_mode': ParameterValue(debug_mode, value_type=bool),
+                'jog_mode': ParameterValue(jog_mode, value_type=bool),
             }],
         ),
         Node(
@@ -70,7 +93,7 @@ def generate_launch_description():
             arguments=['--force-discover'],
             parameters=[{
                 'config_file': motor_config_file,
-                'debug_mode': ParameterValue(debug_mode, value_type=bool),
+                'jog_mode': ParameterValue(jog_mode, value_type=bool),
                 'use_robot_manager_widget': True,
             }],
         ),

@@ -8,24 +8,51 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def default_config_file(package_share_path, package_name, file_name):
+    installed_path = os.path.join(package_share_path, 'config', file_name)
+    path = os.path.abspath(package_share_path)
+
+    while True:
+        source_path = os.path.join(
+            path,
+            'src',
+            'ros2',
+            'motion_system_ros2',
+            package_name,
+            'config',
+            file_name,
+        )
+        if os.path.isfile(source_path):
+            return source_path
+
+        parent = os.path.dirname(path)
+        if parent == path:
+            return installed_path
+        path = parent
+
+
 def generate_launch_description():
     pkg_share = get_package_share_directory('motion_control_bridge')
-    default_config = os.path.join(pkg_share, 'config', 'example_ethercat_zeroerr.yaml')
+    default_config = default_config_file(
+        pkg_share,
+        'motion_control_bridge',
+        'example_ethercat_zeroerr.yaml',
+    )
 
     config_file_arg = DeclareLaunchArgument(
         'config_file',
         default_value=default_config,
         description='Absolute path to motor_manager YAML (masters / drivers).',
     )
-    debug_mode_arg = DeclareLaunchArgument(
-        'debug_mode',
+    jog_mode_arg = DeclareLaunchArgument(
+        'jog_mode',
         default_value='false',
-        description='Use raw encoder values instead of position for target position commands.',
+        description='Enable jog commands that use raw encoder targets.',
     )
 
     return LaunchDescription([
         config_file_arg,
-        debug_mode_arg,
+        jog_mode_arg,
         Node(
             package='motion_control_bridge',
             executable='motor_manager_node',
@@ -33,7 +60,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': LaunchConfiguration('config_file'),
-                'debug_mode': ParameterValue(LaunchConfiguration('debug_mode'), value_type=bool),
+                'jog_mode': ParameterValue(LaunchConfiguration('jog_mode'), value_type=bool),
             }],
         ),
     ])

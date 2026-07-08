@@ -42,9 +42,9 @@ MotorManagerNode::MotorManagerNode(const rclcpp::NodeOptions& options)
             "`ros2 launch motion_control_bridge motor_manager_node.launch.py`.");
     }
 
-    const bool debug_mode = this->declare_parameter<bool>("debug_mode", false);
+    const bool jog_mode = this->declare_parameter<bool>("jog_mode", false);
 
-    motor_manager_ = std::make_unique<motor_manager::MotorManager>(config_file_, debug_mode);
+    motor_manager_ = std::make_unique<motor_manager::MotorManager>(config_file_, jog_mode);
 
     manager_run_thread_ = std::thread([this]() {
         try {

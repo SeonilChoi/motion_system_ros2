@@ -46,10 +46,10 @@ Run only the motor manager bridge node.
 ros2 launch motion_control_bridge motor_manager_node.launch.py
 ```
 
-To send target positions as raw encoder values, enable debug mode:
+To send target positions as raw encoder values, enable jog mode:
 
 ```bash
-ros2 launch motion_control_bridge motor_manager_node.launch.py debug_mode:=true
+ros2 launch motion_control_bridge motor_manager_node.launch.py jog_mode:=true
 ```
 
 Run the RQt UI with the motor manager bridge.
@@ -186,10 +186,10 @@ motor manager bridge node만 실행한다.
 ros2 launch motion_control_bridge motor_manager_node.launch.py
 ```
 
-target position을 raw encoder 값으로 보내려면 debug mode를 켠다.
+target position을 raw encoder 값으로 보내려면 jog mode를 켠다.
 
 ```bash
-ros2 launch motion_control_bridge motor_manager_node.launch.py debug_mode:=true
+ros2 launch motion_control_bridge motor_manager_node.launch.py jog_mode:=true
 ```
 
 motor manager bridge와 함께 RQt UI를 실행한다.
