@@ -43,6 +43,12 @@ CW_NEW_SET_POINT_ZEROERR = 0x103F
 CW_NEW_SET_POINT_MINAS = 0x003F
 CW_SOCKETCAN_SET_POINT = 0x0001
 
+MOTION_SYSTEM_FILES_DIR = os.environ.get(
+    'MOTION_SYSTEM_FILES_DIR',
+    os.path.expanduser('~/colcon_ws/files'),
+)
+
+
 class MotorManagerWidget(QMainWindow):
     _QOS_REKL5V = QoSProfile(
         reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -76,7 +82,9 @@ class MotorManagerWidget(QMainWindow):
         
         self._node.declare_parameter('config_file', '')
         self._node.declare_parameter('jog_mode', False)
-        self._config_file = str(self._node.get_parameter('config_file').value)
+        self._config_file = self._resolve_config_file(
+            str(self._node.get_parameter('config_file').value)
+        )
         self._jog_mode = bool(self._node.get_parameter('jog_mode').value)
         self._master_infos, self._motor_infos = self._load_motor_infos()
         self._motor_info_by_controller_index = {
@@ -113,6 +121,17 @@ class MotorManagerWidget(QMainWindow):
             self.motor_status_callback,
             self._QOS_REKL5V,
         )
+
+
+    def _resolve_config_file(self, config_file):
+        file_name = os.path.basename(config_file) if config_file else 'example_ethercat_zeroerr.yaml'
+        files_config = os.path.join(MOTION_SYSTEM_FILES_DIR, 'motor_manager', file_name)
+        if config_file and os.path.abspath(config_file) != os.path.abspath(files_config):
+            self._node.get_logger().info(
+                f"Using writable motor config from files folder: {files_config}"
+            )
+
+        return files_config
 
 
     def _load_motor_infos(self):

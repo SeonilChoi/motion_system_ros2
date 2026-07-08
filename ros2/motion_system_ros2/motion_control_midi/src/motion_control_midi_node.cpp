@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cctype>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -16,7 +17,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <yaml-cpp/yaml.h>
 
 #include <midi_msgs/msg/midi.hpp>
@@ -39,7 +39,14 @@ constexpr double kFaderEpsilon = 0.5;
 constexpr auto kPublishPeriod = std::chrono::milliseconds(5);
 constexpr double kMaxSmoothingTimeMs = 3000.0;
 constexpr double kSmoothingCurvePower = 2.0;
-constexpr const char * kPackageScheme = "package://";
+const char * kFilesDirEnv = std::getenv("MOTION_SYSTEM_FILES_DIR");
+const char * kHomeDir = std::getenv("HOME");
+const std::filesystem::path kDefaultFilesDir =
+  (kFilesDirEnv != nullptr && kFilesDirEnv[0] != '\0') ?
+  std::filesystem::path(kFilesDirEnv) :
+  ((kHomeDir != nullptr && kHomeDir[0] != '\0') ?
+  std::filesystem::path(kHomeDir) / "colcon_ws" / "files" :
+  std::filesystem::path("/tmp/colcon_ws/files"));
 
 std::string to_lower(std::string s)
 {
@@ -76,31 +83,8 @@ int32_t int_at(
   return values[index];
 }
 
-std::filesystem::path resolve_resource_path(
-  const std::string & path,
-  const std::filesystem::path & config_dir)
-{
-  const std::string package_scheme(kPackageScheme);
-  if (path.rfind(package_scheme, 0) == 0) {
-    const std::string package_path = path.substr(package_scheme.size());
-    const std::size_t slash = package_path.find('/');
-    if (slash == std::string::npos || slash == 0 || slash + 1 >= package_path.size()) {
-      throw std::runtime_error("Invalid package resource path: " + path);
-    }
-
-    const std::string package_name = package_path.substr(0, slash);
-    const std::string relative_path = package_path.substr(slash + 1);
-    return std::filesystem::path(
-      ament_index_cpp::get_package_share_directory(package_name)) / relative_path;
-  }
-
-  const std::filesystem::path file_path(path);
-  if (file_path.is_absolute()) {
-    return file_path;
-  }
-
-  return config_dir / file_path;
-}
+const std::filesystem::path kDefaultMotionRecordPath =
+  kDefaultFilesDir / "robot_manager" / "rocking_chair.csv";
 
 }  // namespace
 
@@ -118,12 +102,8 @@ public:
     max_smoothing_time_ms_ = kMaxSmoothingTimeMs;
     smoothing_curve_power_ = kSmoothingCurvePower;
     declare_parameter<std::string>("config_file", "");
-    declare_parameter<std::string>("robot_config_file", "");
     declare_parameter<bool>("record_motion", false);
-    declare_parameter<std::string>("record_file_name", "recorded_motion.csv");
-    declare_parameter<std::string>("record_directory", "");
-
-    get_parameter("robot_config_file", robot_config_file_);
+    declare_parameter<std::string>("record_file_path", kDefaultMotionRecordPath.string());
 
     std::string config_file;
     get_parameter("config_file", config_file);
@@ -543,54 +523,16 @@ private:
 
   std::filesystem::path motion_record_path() const
   {
-    std::string file_name;
-    get_parameter("record_file_name", file_name);
-    if (file_name.empty()) {
-      file_name = "recorded_motion.csv";
+    std::string record_file_path;
+    get_parameter("record_file_path", record_file_path);
+
+    std::filesystem::path path =
+      record_file_path.empty() ? kDefaultMotionRecordPath : std::filesystem::path(record_file_path);
+    if (path.extension().empty()) {
+      path += ".csv";
     }
 
-    std::filesystem::path name = std::filesystem::path(file_name).filename();
-    if (name.empty() || name == ".") {
-      name = "recorded_motion.csv";
-    }
-    if (name.extension().empty()) {
-      name += ".csv";
-    }
-
-    return motion_record_directory() / name;
-  }
-
-  std::filesystem::path motion_record_directory() const
-  {
-    std::string record_directory;
-    get_parameter("record_directory", record_directory);
-    if (!record_directory.empty()) {
-      return std::filesystem::path(record_directory).lexically_normal();
-    }
-
-    if (robot_config_file_.empty()) {
-      throw std::runtime_error("robot_config_file parameter must be set.");
-    }
-
-    YAML::Node root = YAML::LoadFile(robot_config_file_);
-    const YAML::Node robots_node = root["robot"];
-    if (!robots_node || !robots_node.IsSequence() || robots_node.size() == 0) {
-      throw std::runtime_error("Invalid or missing 'robot' in " + robot_config_file_);
-    }
-
-    const YAML::Node motion_path_node = robots_node[0]["motion_data_file_path"];
-    if (!motion_path_node) {
-      throw std::runtime_error("Missing 'motion_data_file_path' in " + robot_config_file_);
-    }
-
-    const std::filesystem::path motion_path = resolve_resource_path(
-      motion_path_node.as<std::string>(),
-      std::filesystem::path(robot_config_file_).parent_path());
-    if (motion_path.extension() == ".csv") {
-      return motion_path.parent_path();
-    }
-
-    return motion_path;
+    return path.lexically_normal();
   }
 
   bool write_motion_csv(
@@ -727,12 +669,15 @@ private:
     }
 
     std::error_code ec;
-    std::filesystem::create_directories(path.parent_path(), ec);
+    const std::filesystem::path directory = path.parent_path();
+    if (!directory.empty()) {
+      std::filesystem::create_directories(directory, ec);
+    }
     if (ec) {
       RCLCPP_ERROR(
         get_logger(),
         "Failed to create motion record directory '%s': %s",
-        path.parent_path().string().c_str(),
+        directory.string().c_str(),
         ec.message().c_str());
       return;
     }
@@ -768,7 +713,6 @@ private:
   std::mutex recording_mutex_;
   std::vector<std::vector<double>> motion_recording_rows_;
   std::chrono::steady_clock::time_point motion_recording_start_time_{};
-  std::string robot_config_file_;
   bool motion_recording_active_{};
   std::chrono::milliseconds publish_period_{5};
   double max_smoothing_time_ms_{3000.0};

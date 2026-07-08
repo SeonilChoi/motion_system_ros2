@@ -1,6 +1,5 @@
 import os
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -8,88 +7,33 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
-def default_source_motion_directory(*package_share_paths):
-    for package_share_path in package_share_paths:
-        path = os.path.abspath(package_share_path)
-        while True:
-            candidate = os.path.join(
-                path,
-                'src',
-                'lib',
-                'robot_manager',
-                'robots',
-                'motions',
-            )
-            if os.path.isdir(candidate):
-                return candidate
-
-            parent = os.path.dirname(path)
-            if parent == path:
-                break
-            path = parent
-
-    return ''
-
-
-def default_config_file(package_share_path, package_name, file_name):
-    installed_path = os.path.join(package_share_path, 'config', file_name)
-    path = os.path.abspath(package_share_path)
-
-    while True:
-        source_path = os.path.join(
-            path,
-            'src',
-            'ros2',
-            'motion_system_ros2',
-            package_name,
-            'config',
-            file_name,
-        )
-        if os.path.isfile(source_path):
-            return source_path
-
-        parent = os.path.dirname(path)
-        if parent == path:
-            return installed_path
-        path = parent
+MOTION_SYSTEM_FILES_DIR = os.environ.get(
+    'MOTION_SYSTEM_FILES_DIR',
+    os.path.expanduser('~/colcon_ws/files'),
+)
+DEFAULT_MOTOR_CONFIG_FILE = os.path.join(
+    MOTION_SYSTEM_FILES_DIR,
+    'motor_manager',
+    'example_ethercat_zeroerr.yaml',
+)
+DEFAULT_RECORD_FILE_PATH = os.path.join(
+    MOTION_SYSTEM_FILES_DIR,
+    'robot_manager',
+    'rocking_chair.csv',
+)
 
 
 def generate_launch_description():
     motor_config_file = LaunchConfiguration('motor_config_file')
-    robot_config_file = LaunchConfiguration('robot_config_file')
     record_motion = LaunchConfiguration('record_motion')
-    record_file_name = LaunchConfiguration('record_file_name')
-    record_directory = LaunchConfiguration('record_directory')
+    record_file_path = LaunchConfiguration('record_file_path')
     jog_mode = LaunchConfiguration('jog_mode')
-
-    motion_control_midi_pkg_share = get_package_share_directory('motion_control_midi')
-    motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
-    motion_control_robot_pkg_share = get_package_share_directory('motion_control_robot')
-    default_motor_config_file = default_config_file(
-        motion_control_bridge_pkg_share,
-        'motion_control_bridge',
-        'example_ethercat_zeroerr.yaml',
-    )
-    default_robot_config_file = default_config_file(
-        motion_control_robot_pkg_share,
-        'motion_control_robot',
-        'rocking_chair.yaml',
-    )
-    default_record_directory = default_source_motion_directory(
-        motion_control_midi_pkg_share,
-        motion_control_robot_pkg_share,
-    )
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'motor_config_file',
-            default_value=default_motor_config_file,
+            default_value=DEFAULT_MOTOR_CONFIG_FILE,
             description='Absolute path to motor_manager YAML.',
-        ),
-        DeclareLaunchArgument(
-            'robot_config_file',
-            default_value=default_robot_config_file,
-            description='Absolute path to robot_manager YAML.',
         ),
         DeclareLaunchArgument(
             'record_motion',
@@ -97,14 +41,9 @@ def generate_launch_description():
             description='Enable recording current motor_status positions when btn3 is activated.',
         ),
         DeclareLaunchArgument(
-            'record_file_name',
-            default_value='rocking_chair.csv',
-            description='CSV file name for recorded motion data.',
-        ),
-        DeclareLaunchArgument(
-            'record_directory',
-            default_value=default_record_directory,
-            description='Directory where recorded motion CSV files are saved.',
+            'record_file_path',
+            default_value=DEFAULT_RECORD_FILE_PATH,
+            description='Absolute path where recorded motion CSV data is saved.',
         ),
         DeclareLaunchArgument(
             'jog_mode',
@@ -138,10 +77,8 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': motor_config_file,
-                'robot_config_file': robot_config_file,
                 'record_motion': ParameterValue(record_motion, value_type=bool),
-                'record_file_name': record_file_name,
-                'record_directory': record_directory,
+                'record_file_path': record_file_path,
             }],
         ),
     ])

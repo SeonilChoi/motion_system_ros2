@@ -1,6 +1,5 @@
 import os
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -8,27 +7,20 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
-def default_config_file(package_share_path, package_name, file_name):
-    installed_path = os.path.join(package_share_path, 'config', file_name)
-    path = os.path.abspath(package_share_path)
-
-    while True:
-        source_path = os.path.join(
-            path,
-            'src',
-            'ros2',
-            'motion_system_ros2',
-            package_name,
-            'config',
-            file_name,
-        )
-        if os.path.isfile(source_path):
-            return source_path
-
-        parent = os.path.dirname(path)
-        if parent == path:
-            return installed_path
-        path = parent
+MOTION_SYSTEM_FILES_DIR = os.environ.get(
+    'MOTION_SYSTEM_FILES_DIR',
+    os.path.expanduser('~/colcon_ws/files'),
+)
+DEFAULT_MOTOR_CONFIG_FILE = os.path.join(
+    MOTION_SYSTEM_FILES_DIR,
+    'motor_manager',
+    'example_ethercat_zeroerr.yaml',
+)
+DEFAULT_ROBOT_CONFIG_FILE = os.path.join(
+    MOTION_SYSTEM_FILES_DIR,
+    'robot_manager',
+    'rocking_chair.yaml',
+)
 
 
 def generate_launch_description():
@@ -36,29 +28,15 @@ def generate_launch_description():
     robot_config_file = LaunchConfiguration('robot_config_file')
     jog_mode = LaunchConfiguration('jog_mode')
 
-    motion_control_bridge_pkg_share = get_package_share_directory('motion_control_bridge')
-    motion_control_robot_pkg_share = get_package_share_directory('motion_control_robot')
-
-    default_motor_config_file = default_config_file(
-        motion_control_bridge_pkg_share,
-        'motion_control_bridge',
-        'example_ethercat_zeroerr.yaml',
-    )
-    default_robot_config_file = default_config_file(
-        motion_control_robot_pkg_share,
-        'motion_control_robot',
-        'rocking_chair.yaml',
-    )
-
     return LaunchDescription([
         DeclareLaunchArgument(
             'motor_config_file',
-            default_value=default_motor_config_file,
+            default_value=DEFAULT_MOTOR_CONFIG_FILE,
             description='Absolute path to motor_manager YAML.',
         ),
         DeclareLaunchArgument(
             'robot_config_file',
-            default_value=default_robot_config_file,
+            default_value=DEFAULT_ROBOT_CONFIG_FILE,
             description='Absolute path to robot_manager YAML.',
         ),
         DeclareLaunchArgument(

@@ -42,7 +42,25 @@ colcon build --packages-up-to motion_control_bridge
 
 ## Launch
 
-Launch the motor manager with the default example config:
+Runtime configs and motion files are read from `~/colcon_ws/files` by default:
+
+| Type | Default path |
+| --- | --- |
+| Motor manager YAML | `~/colcon_ws/files/motor_manager/example_ethercat_zeroerr.yaml` |
+| Robot manager YAML | `~/colcon_ws/files/robot_manager/rocking_chair.yaml` |
+| Motion CSV | `~/colcon_ws/files/robot_manager/rocking_chair.csv` |
+
+Set `MOTION_SYSTEM_FILES_DIR` before launching if the base folder changes.
+
+### Run By Package
+
+`motion_control_msgs` is a message package and has no launch file:
+
+```bash
+colcon build --packages-select motion_control_msgs
+```
+
+`motion_control_bridge` starts only `motor_manager_node`:
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -50,24 +68,14 @@ source ~/colcon_ws/install/setup.bash
 ros2 launch motion_control_bridge motor_manager_node.launch.py
 ```
 
-Use a specific motor configuration:
+Use a specific motor configuration with `config_file`:
 
 ```bash
 ros2 launch motion_control_bridge motor_manager_node.launch.py \
-  config_file:=~/colcon_ws/src/ros2/motion_system_ros2/motion_control_bridge/config/example_socketcan_cubemars.yaml
+  config_file:=$HOME/colcon_ws/files/motor_manager/example_socketcan_cubemars.yaml
 ```
 
-The bridge example configs are intentionally split into one-controller files:
-
-| File | Communication | Driver |
-| --- | --- | --- |
-| `example_canopen_zeroerr.yaml` | CANopen | ZeroErr |
-| `example_ethercat_zeroerr.yaml` | EtherCAT | ZeroErr |
-| `example_ethercat_minas.yaml` | EtherCAT | Panasonic MINAS |
-| `example_serial_dynamixel.yaml` | Serial | Dynamixel |
-| `example_socketcan_cubemars.yaml` | SocketCAN | CubeMars |
-
-Other useful launch commands:
+`motion_control_rqt` has two launch modes:
 
 ```bash
 # RQt motor control UI with motor manager
@@ -75,12 +83,43 @@ ros2 launch motion_control_rqt display_motor_manager_node.launch.py
 
 # RQt motor and rocking-chair robot control UI
 ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py
+```
+
+Use `motor_config_file` for RQt launch files, and `robot_config_file` when the
+robot manager is included:
+
+```bash
+ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py \
+  motor_config_file:=$HOME/colcon_ws/files/motor_manager/example_ethercat_zeroerr.yaml \
+  robot_config_file:=$HOME/colcon_ws/files/robot_manager/rocking_chair.yaml
+```
+
+`motion_control_midi` starts `motion_control_bridge`, `xtouch_midi`, and
+`motion_control_midi_node`:
+
+```bash
+# MIDI-to-motor command bridge
+ros2 launch motion_control_midi motion_control_midi_node.launch.py
+
+# Record motion data to one CSV path
+ros2 launch motion_control_midi motion_control_midi_node.launch.py \
+  record_motion:=true \
+  record_file_path:=$HOME/colcon_ws/files/robot_manager/recorded_motion.csv
+```
+
+`motion_control_robot` starts joystick input, PlayStation teleop,
+`motion_control_bridge`, and `robot_manager_node`:
+
+```bash
+ros2 launch motion_control_robot robot_manager_node.launch.py
+```
+
+Other useful launch commands:
+
+```bash
 
 # Behringer X-Touch MIDI bridge
 ros2 launch xtouch_midi xtouch_node.launch.py
-
-# MIDI-to-motor command bridge
-ros2 launch motion_control_midi motion_control_midi_node.launch.py
 
 # iAHRS IMU driver
 ros2 launch iahrs_driver iahrs_driver.py
@@ -148,7 +187,7 @@ Device/interface drivers included in this workspace:
 Example motor configuration files are available in:
 
 ```text
-ros2/motion_system_ros2/motion_control_bridge/config/
+~/colcon_ws/files/motor_manager
 ```
 
 Driver hardware parameter files are installed from:
@@ -164,10 +203,10 @@ paths. Dynamixel model control tables are kept under
 Robot motion CSV files are installed from:
 
 ```text
-lib/robot_manager/robots/motions/
+~/colcon_ws/files/robot_manager
 ```
 
-Robot YAML files reference them with `package://robot_manager/robots/motions`.
+Robot YAML files reference motion CSV files relative to the robot YAML location.
 
 ## 한국어 버전
 
@@ -215,7 +254,25 @@ colcon build --packages-up-to motion_control_bridge
 
 ### Launch
 
-기본 예제 설정으로 motor manager를 실행합니다:
+기본 runtime config와 motion 파일은 `~/colcon_ws/files`에서 읽고 씁니다:
+
+| Type | Default path |
+| --- | --- |
+| Motor manager YAML | `~/colcon_ws/files/motor_manager/example_ethercat_zeroerr.yaml` |
+| Robot manager YAML | `~/colcon_ws/files/robot_manager/rocking_chair.yaml` |
+| Motion CSV | `~/colcon_ws/files/robot_manager/rocking_chair.csv` |
+
+base folder가 바뀌면 launch 전에 `MOTION_SYSTEM_FILES_DIR` 환경변수를 설정합니다.
+
+### Package별 실행
+
+`motion_control_msgs`는 launch 파일이 없는 message package입니다:
+
+```bash
+colcon build --packages-select motion_control_msgs
+```
+
+`motion_control_bridge`는 `motor_manager_node`만 실행합니다:
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -223,24 +280,14 @@ source ~/colcon_ws/install/setup.bash
 ros2 launch motion_control_bridge motor_manager_node.launch.py
 ```
 
-특정 모터 설정 파일을 사용하려면:
+특정 motor config를 쓰려면 `config_file`을 넘깁니다:
 
 ```bash
 ros2 launch motion_control_bridge motor_manager_node.launch.py \
-  config_file:=~/colcon_ws/src/ros2/motion_system_ros2/motion_control_bridge/config/example_socketcan_cubemars.yaml
+  config_file:=$HOME/colcon_ws/files/motor_manager/example_socketcan_cubemars.yaml
 ```
 
-bridge 예제 설정은 controller를 하나씩만 갖는 파일로 나뉘어 있습니다:
-
-| File | Communication | Driver |
-| --- | --- | --- |
-| `example_canopen_zeroerr.yaml` | CANopen | ZeroErr |
-| `example_ethercat_zeroerr.yaml` | EtherCAT | ZeroErr |
-| `example_ethercat_minas.yaml` | EtherCAT | Panasonic MINAS |
-| `example_serial_dynamixel.yaml` | Serial | Dynamixel |
-| `example_socketcan_cubemars.yaml` | SocketCAN | CubeMars |
-
-그 외 유용한 launch 명령:
+`motion_control_rqt`는 두 가지 launch 모드를 가집니다:
 
 ```bash
 # motor manager와 함께 RQt 모터 제어 UI 실행
@@ -248,12 +295,43 @@ ros2 launch motion_control_rqt display_motor_manager_node.launch.py
 
 # motor manager와 rocking-chair robot 제어를 포함한 RQt UI 실행
 ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py
+```
+
+RQt launch에서는 `motor_config_file`을 사용하고, robot manager를 포함할 때는
+`robot_config_file`도 함께 넘깁니다:
+
+```bash
+ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py \
+  motor_config_file:=$HOME/colcon_ws/files/motor_manager/example_ethercat_zeroerr.yaml \
+  robot_config_file:=$HOME/colcon_ws/files/robot_manager/rocking_chair.yaml
+```
+
+`motion_control_midi`는 `motion_control_bridge`, `xtouch_midi`,
+`motion_control_midi_node`를 함께 실행합니다:
+
+```bash
+# MIDI 입력을 모터 명령으로 변환하는 bridge
+ros2 launch motion_control_midi motion_control_midi_node.launch.py
+
+# motion data를 하나의 CSV 경로로 녹화
+ros2 launch motion_control_midi motion_control_midi_node.launch.py \
+  record_motion:=true \
+  record_file_path:=$HOME/colcon_ws/files/robot_manager/recorded_motion.csv
+```
+
+`motion_control_robot`은 joystick input, PlayStation teleop,
+`motion_control_bridge`, `robot_manager_node`를 함께 실행합니다:
+
+```bash
+ros2 launch motion_control_robot robot_manager_node.launch.py
+```
+
+그 외 유용한 launch 명령:
+
+```bash
 
 # Behringer X-Touch MIDI bridge
 ros2 launch xtouch_midi xtouch_node.launch.py
-
-# MIDI 입력을 모터 명령으로 변환하는 bridge
-ros2 launch motion_control_midi motion_control_midi_node.launch.py
 
 # iAHRS IMU 드라이버
 ros2 launch iahrs_driver iahrs_driver.py
@@ -319,7 +397,7 @@ ROS 및 장치 인터페이스:
 예제 모터 설정 파일은 다음 경로에 있습니다:
 
 ```text
-ros2/motion_system_ros2/motion_control_bridge/config/
+~/colcon_ws/files/motor_manager
 ```
 
 driver 하드웨어 파라미터 파일은 다음 위치에서 설치됩니다:
@@ -335,7 +413,7 @@ Dynamixel model control table은
 robot motion CSV 파일은 다음 위치에서 설치됩니다:
 
 ```text
-lib/robot_manager/robots/motions/
+~/colcon_ws/files/robot_manager
 ```
 
-robot YAML 파일은 이를 `package://robot_manager/robots/motions`로 참조합니다.
+robot YAML 파일은 motion CSV를 robot YAML 위치 기준 상대 경로로 참조합니다.
