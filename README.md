@@ -21,6 +21,19 @@ cd ~/colcon_ws/src
 git submodule update --init --recursive
 ```
 
+## Download Runtime Files
+
+Download the `files` folder from the
+[Google Drive shared folder](https://drive.google.com/drive/folders/1aCavCTzrEjfnkBebYB36TDPYnzPHz5uE?usp=sharing)
+and place it in the root of the colcon workspace. The resulting directory
+layout should be:
+
+```text
+~/colcon_ws/
+├── files/
+└── src/
+```
+
 ## Build
 
 Install ROS 2 and source your ROS environment first. The examples below assume
@@ -231,6 +244,18 @@ submodule 없이 clone했다면 나중에 다음 명령으로 초기화합니다
 ```bash
 cd ~/colcon_ws/src
 git submodule update --init --recursive
+```
+
+### Runtime 파일 다운로드
+
+[Google Drive 공유 폴더](https://drive.google.com/drive/folders/1aCavCTzrEjfnkBebYB36TDPYnzPHz5uE?usp=sharing)에
+접속하여 `files` 폴더를 다운로드한 뒤, colcon 워크스페이스 최상위 경로에
+배치합니다. 배치 후 디렉터리 구조는 다음과 같아야 합니다:
+
+```text
+~/colcon_ws/
+├── files/
+└── src/
 ```
 
 ### Build
