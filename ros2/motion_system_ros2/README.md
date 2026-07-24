@@ -131,13 +131,31 @@ Run `motion_control_midi`. This launch starts `motion_control_bridge`,
 ros2 launch motion_control_midi motion_control_midi_node.launch.py
 ```
 
-Record motion data to a specific CSV:
+Record motion data to the CSV selected by `motion_data_file_path` in a robot YAML:
 
 ```bash
 ros2 launch motion_control_midi motion_control_midi_node.launch.py \
-  record_motion:=true \
-  record_file_path:=$HOME/colcon_ws/files/robot_manager/recorded_motion.csv
+  record_mode:=true \
+  robot_config_file:=$HOME/colcon_ws/files/robot_manager/rocking_chair.yaml
 ```
+
+With `record_mode:=true`, btn1 and its LED are enabled automatically only on
+channels that have a controller selected in `dial1`. This only arms recording;
+sampling starts when at least one selected channel reports both `btn3=true` and
+`touch=true`. Disabling btn1 on any one selected channel saves and ends
+recording for all channels, then turns off every recording btn1/LED. Unselected
+btn1 buttons are ignored. The same node process does not restart that recording
+session. After the CSV is saved, its final elapsed time is rounded to one decimal
+place and written to `move_duration` in the active robot YAML.
+
+For each X-Touch channel, enabling `btn2` turns off `btn0` and `btn3`; `btn1`
+keeps its current state.
+`motion_control_midi` then sends the `home_positions` value matching the
+controller selected by `dial1`. The command starts from the latest motor
+feedback and follows a fifth-order smoothstep trajectory over the YAML
+`home_duration`. When motor feedback reaches that home position, `btn2` and its
+LED are automatically turned off. The home position and motion CSV path are both
+loaded from `robot_config_file`.
 
 Run `motion_control_robot` with joystick input and the motor manager bridge.
 
@@ -333,13 +351,30 @@ ros2 launch motion_control_rqt rocking_chair_robot_manager.launch.py \
 ros2 launch motion_control_midi motion_control_midi_node.launch.py
 ```
 
-motion data를 특정 CSV로 녹화하려면:
+robot YAML의 `motion_data_file_path`가 가리키는 CSV에 motion data를 녹화하려면:
 
 ```bash
 ros2 launch motion_control_midi motion_control_midi_node.launch.py \
-  record_motion:=true \
-  record_file_path:=$HOME/colcon_ws/files/robot_manager/recorded_motion.csv
+  record_mode:=true \
+  robot_config_file:=$HOME/colcon_ws/files/robot_manager/rocking_chair.yaml
 ```
+
+`record_mode:=true`로 실행하면 `dial1`에 controller가 선택된 채널의
+btn1과 LED만 자동으로 켜진다. 이 상태는 녹화 준비 상태이며, 선택된 채널
+중 하나 이상에서 `btn3=true`와 `touch=true`가 동시에 확인되는 순간 실제
+녹화를 시작한다. 선택된 채널 중 어느 하나의 btn1을 끄면 모든 채널의 녹화
+데이터를 저장하고 녹화용 btn1/LED를 모두 끈다. 선택되지 않은 채널의 btn1
+입력은 무시하며, 같은 노드 실행 중에는 녹화를 자동으로 다시 시작하지
+않는다. CSV 저장 후 마지막 elapsed time을 소수점 첫째 자리로 반올림하여
+사용 중인 robot YAML의 `move_duration`에 기록한다.
+
+각 X-Touch 채널에서 `btn2`를 켜면 `btn0`와 `btn3`는 꺼지지만 btn1 상태는
+그대로 유지된다.
+이후 `motion_control_midi`가 `dial1`으로 선택한 controller에 대응하는
+`home_positions` 값을 전송한다. 명령은 가장 최근 motor feedback 위치에서
+시작하며 YAML의 `home_duration` 동안 5차 smoothstep 궤적을 따른다. motor
+feedback이 홈 위치에 도달하면 `btn2`와 해당 LED가 자동으로 꺼진다. 홈
+위치와 motion CSV 경로는 모두 `robot_config_file`에서 읽는다.
 
 `motion_control_robot`을 joystick input, motor manager bridge와 함께 실행한다.
 

@@ -72,6 +72,7 @@ class MotorManagerWidget(QMainWindow):
             rclpy.logging.get_logger('MotorManagerWidget').error(f'Failed to load UI file: {e}')
             raise
 
+        self.resize(1500, 900)
         self._node = node
 
         self._update_timer = QTimer(self)
@@ -198,23 +199,23 @@ class MotorManagerWidget(QMainWindow):
         top_control_layout = QHBoxLayout()
 
         reset_button = QPushButton()
-        reset_button.setFixedWidth(40)
+        reset_button.setMinimumSize(44, 34)
         reset_button.setIcon(refresh_icon)
         reset_button.clicked.connect(self._on_reset_button_clicked)
 
         self._select_motor_button = QToolButton()
-        self._select_motor_button.setFixedWidth(300)
+        self._select_motor_button.setMinimumSize(320, 34)
         self._select_motor_button.setText("Select a Motor ...")
         self._select_motor_button.setPopupMode(QToolButton.MenuButtonPopup)
         self._add_select_motor_menu()
 
         self._enable_motor_button = QPushButton("Enable")
-        self._enable_motor_button.setFixedWidth(80)
+        self._enable_motor_button.setMinimumSize(104, 34)
         self._enable_motor_button.setEnabled(False)
         self._enable_motor_button.clicked.connect(self._on_enable_motor_clicked)
 
         self._disable_motor_button = QPushButton("Disable")
-        self._disable_motor_button.setFixedWidth(80)
+        self._disable_motor_button.setMinimumSize(104, 34)
         self._disable_motor_button.setEnabled(False)
         self._disable_motor_button.clicked.connect(self._on_disable_motor_clicked)
 
@@ -233,6 +234,7 @@ class MotorManagerWidget(QMainWindow):
 
         self._motor_infos_plot_widget = pg.PlotWidget(title="Motor infos")
         self._motor_infos_plot_widget.setBackground('w')
+        self._motor_infos_plot_widget.setMinimumHeight(360)
 
         status_monitor_layout.addWidget(visible_button, 0, Qt.AlignRight)
         status_monitor_layout.addWidget(self._motor_infos_plot_widget)
@@ -295,7 +297,7 @@ class MotorManagerWidget(QMainWindow):
         jog_console_layout.addWidget(self._jog_current_encoder_label)
 
         first_tab_layout.addLayout(top_control_layout)
-        first_tab_layout.addWidget(status_monitor)
+        first_tab_layout.addWidget(status_monitor, 1)
         first_tab_layout.addWidget(command_console)
         first_tab_layout.addWidget(jog_console)
 
@@ -551,6 +553,53 @@ class MotorManagerWidget(QMainWindow):
 
         self._set_current_value_label(motor_info['profile_mode'], value)
 
+    def _set_slider_value_without_command(self, value):
+        previous = self._command_slider.blockSignals(True)
+        try:
+            self._command_slider.setValue(value)
+        finally:
+            self._command_slider.blockSignals(previous)
+
+    def _set_slider_state_without_command(self, lower, upper, value):
+        previous = self._command_slider.blockSignals(True)
+        try:
+            self._command_slider.setRange(lower, upper)
+            self._command_slider.setValue(value)
+        finally:
+            self._command_slider.blockSignals(previous)
+
+    def _motor_status_array_index(self, controller_index):
+        if self._motor_status is None:
+            return None
+
+        try:
+            return list(self._motor_status.controller_index).index(controller_index)
+        except ValueError:
+            return None
+
+    def _sync_position_slider_from_motor_status(self):
+        if self._jog_mode or self._command_slider.isSliderDown():
+            return
+        if self._current_controller_index is None or self._motor_status is None:
+            return
+
+        motor_info = self._selected_motor_info()
+        if motor_info is None or motor_info.get('profile_mode') != 0:
+            return
+
+        status_index = self._motor_status_array_index(self._current_controller_index)
+        if status_index is None or status_index >= len(self._motor_status.position):
+            return
+
+        current_value = int(round(self._motor_status.position[status_index] * 100.0))
+        current_value = max(
+            self._command_slider.minimum(),
+            min(self._command_slider.maximum(), current_value),
+        )
+        if self._command_slider.value() != current_value:
+            self._set_slider_value_without_command(current_value)
+        self._set_current_value_label(0, current_value)
+
     def _on_jog_forward_clicked(self):
         self._publish_jog_command(1)
 
@@ -652,34 +701,42 @@ class MotorManagerWidget(QMainWindow):
         self._update_motor_request_buttons()
         self._update_jog_current_encoder_label()
 
-        if index >= len(self._motor_status.position):
+        status_index = self._motor_status_array_index(index)
+        if status_index is None:
             return
 
         if motor_info["profile_mode"] == 0:
+            if status_index >= len(self._motor_status.position):
+                return
             lower = int(motor_info["lower"] * 100)
             upper = int(motor_info["upper"] * 100)
-            current_value = int(self._motor_status.position[index] * 100)
+            current_value = int(round(self._motor_status.position[status_index] * 100.0))
             self._max_value_label.setText(f"{int(upper // 100)}.{int(upper % 100)}")
 
         elif motor_info["profile_mode"] == 1:
+            if status_index >= len(self._motor_status.velocity):
+                return
             velocity_limit = int(motor_info["speed"])
             lower = -int(velocity_limit)
             upper = int(velocity_limit)
-            current_value = int(self._motor_status.velocity[index])
+            current_value = int(self._motor_status.velocity[status_index])
             self._max_value_label.setText(f"{int(upper)}")
 
         elif motor_info["profile_mode"] == 2:
+            if status_index >= len(self._motor_status.effort):
+                return
             effort_limit = int(motor_info["rated_effort"])
             lower = -int(effort_limit)
             upper = int(effort_limit)
-            current_value = int(self._motor_status.effort[index])
+            current_value = int(self._motor_status.effort[status_index])
             self._max_value_label.setText(f"{int(upper)}")
-            
-        self._command_slider.setRange(lower, upper)
-        self._command_slider.setValue(current_value)
+
+        self._set_slider_state_without_command(lower, upper, current_value)
         self._set_current_value_label(motor_info['profile_mode'], current_value)
     
     def _on_update_timer(self):
+        self._sync_position_slider_from_motor_status()
+        self._update_jog_current_encoder_label()
         if self._is_visible:
             self._plot_graph()
     
@@ -711,7 +768,6 @@ class MotorManagerWidget(QMainWindow):
 
     def motor_status_callback(self, msg):
         self._motor_status = msg
-        self._update_jog_current_encoder_label()
         self._positions.append(msg.position)
         self._velocities.append(msg.velocity)
         self._efforts.append(msg.effort)

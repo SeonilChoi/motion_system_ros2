@@ -6,7 +6,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDur
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int8MultiArray
-from motion_control_msgs.msg import MotorStatus
+from motion_control_msgs.msg import MotorStatus, RobotState
 
 from common_robot_interface.joint_frame import joint_frame_t
 from common_robot_interface.state_frame import State
@@ -74,6 +74,11 @@ class RobotManagerNode(Node):
             'motion_control/motor_command',
             self.QOS_BEKL1V,
         )
+        self.robot_state_publisher = self.create_publisher(
+            RobotState,
+            'motion_control/robot_state',
+            self.QOS_BEKL1V,
+        )
 
         self.joy_subscriber = self.create_subscription(
             Joy,
@@ -95,6 +100,7 @@ class RobotManagerNode(Node):
         }
 
         self.is_valid_joint_status: bool = False
+        self._last_invalid_status_warning_ns = 0
 
         self.selected_robot_index: int = self.robot_indices[0]
         self.robot_actions: list[action_frame_t] = [
@@ -103,6 +109,29 @@ class RobotManagerNode(Node):
         ]
 
     def motor_status_callback(self, msg: MotorStatus):
+        field_lengths = {
+            'controller_index': len(msg.controller_index),
+            'controlword': len(msg.controlword),
+            'statusword': len(msg.statusword),
+            'position': len(msg.position),
+            'velocity': len(msg.velocity),
+            'effort': len(msg.effort),
+        }
+        expected_size = field_lengths['controller_index']
+        if expected_size == 0 or any(
+            size != expected_size for size in field_lengths.values()
+        ):
+            now_ns = self.get_clock().now().nanoseconds
+            if now_ns - self._last_invalid_status_warning_ns >= 5_000_000_000:
+                lengths = ', '.join(
+                    f'{name}={size}' for name, size in field_lengths.items()
+                )
+                self.get_logger().warning(
+                    f'Ignoring malformed motor status with inconsistent array lengths: {lengths}'
+                )
+                self._last_invalid_status_warning_ns = now_ns
+            return
+
         joint_status = joint_frame_t(
             controller_index=np.asarray(msg.controller_index, dtype=np.uint8),
             controlword=np.asarray(msg.controlword, dtype=np.uint16),
@@ -134,6 +163,15 @@ class RobotManagerNode(Node):
         msg.effort = [float(effort) for effort in commands.effort]
         self.motor_command_publisher.publish(msg)
 
+    def publish_robot_state(self):
+        msg = RobotState()
+        msg.selected_robot_index = int(self.selected_robot_index)
+        for state_frame in self.robot_manager.get_state_frames():
+            msg.robot_index.append(int(state_frame.robot_index))
+            msg.state.append(int(state_frame.state.value))
+            msg.progress.append(float(state_frame.progress))
+        self.robot_state_publisher.publish(msg)
+
     def joy_callback(self, msg: Joy):
         for btn in range(JOY_BUTTON_MAX):
             self.joy_buttons[btn] = btn < len(msg.buttons) and bool(msg.buttons[btn])
@@ -154,6 +192,7 @@ class RobotManagerNode(Node):
 
     def timer_callback(self):
         if not self.is_valid_joint_status:
+            self.publish_robot_state()
             return
 
         should_publish_motor_command = False
@@ -197,6 +236,7 @@ class RobotManagerNode(Node):
             commands: joint_frame_t = self.robot_manager.set_action_frames(self.robot_actions)
             self.publish_motor_command(commands)
 
+        self.publish_robot_state()
         self.joy_buttons_prev = self.joy_buttons.copy()
 
 

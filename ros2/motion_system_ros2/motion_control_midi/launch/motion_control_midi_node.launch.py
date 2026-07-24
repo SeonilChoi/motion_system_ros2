@@ -16,17 +16,18 @@ DEFAULT_MOTOR_CONFIG_FILE = os.path.join(
     'motor_manager',
     'example_ethercat_zeroerr.yaml',
 )
-DEFAULT_RECORD_FILE_PATH = os.path.join(
+DEFAULT_ROBOT_CONFIG_FILE = os.path.join(
     MOTION_SYSTEM_FILES_DIR,
     'robot_manager',
-    'rocking_chair.csv',
+    'rocking_chair.yaml',
 )
 
 
 def generate_launch_description():
     motor_config_file = LaunchConfiguration('motor_config_file')
-    record_motion = LaunchConfiguration('record_motion')
-    record_file_path = LaunchConfiguration('record_file_path')
+    robot_config_file = LaunchConfiguration('robot_config_file')
+    record_mode = LaunchConfiguration('record_mode')
+    home_position_tolerance = LaunchConfiguration('home_position_tolerance')
     jog_mode = LaunchConfiguration('jog_mode')
 
     return LaunchDescription([
@@ -36,14 +37,22 @@ def generate_launch_description():
             description='Absolute path to motor_manager YAML.',
         ),
         DeclareLaunchArgument(
-            'record_motion',
+            'record_mode',
             default_value='false',
-            description='Enable recording current motor_status positions when btn3 is activated.',
+            description=(
+                'Arm one recording session for dial1-selected channels, start on selected '
+                'btn3+touch, and stop when any selected btn1 is disabled.'
+            ),
         ),
         DeclareLaunchArgument(
-            'record_file_path',
-            default_value=DEFAULT_RECORD_FILE_PATH,
-            description='Absolute path where recorded motion CSV data is saved.',
+            'home_position_tolerance',
+            default_value='0.5',
+            description='Position tolerance used to auto-reset btn2 at home.',
+        ),
+        DeclareLaunchArgument(
+            'robot_config_file',
+            default_value=DEFAULT_ROBOT_CONFIG_FILE,
+            description='Robot YAML containing home positions and motion_data_file_path.',
         ),
         DeclareLaunchArgument(
             'jog_mode',
@@ -66,6 +75,8 @@ def generate_launch_description():
             name='xtouch_node',
             output='screen',
             parameters=[{
+                'config_file': motor_config_file,
+                'jog_mode': ParameterValue(jog_mode, value_type=bool),
                 'btn0_requires_fader_update': True,
                 'btn3_requires_fader_update': True,
             }],
@@ -77,8 +88,13 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'config_file': motor_config_file,
-                'record_motion': ParameterValue(record_motion, value_type=bool),
-                'record_file_path': record_file_path,
+                'robot_config_file': robot_config_file,
+                'jog_mode': ParameterValue(jog_mode, value_type=bool),
+                'record_mode': ParameterValue(record_mode, value_type=bool),
+                'home_position_tolerance': ParameterValue(
+                    home_position_tolerance,
+                    value_type=float,
+                ),
             }],
         ),
     ])

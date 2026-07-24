@@ -71,6 +71,7 @@ def generate_launch_description():
             arguments=['--force-discover'],
             parameters=[{
                 'config_file': motor_config_file,
+                'robot_config_file': robot_config_file,
                 'jog_mode': ParameterValue(jog_mode, value_type=bool),
                 'use_robot_manager_widget': True,
             }],
