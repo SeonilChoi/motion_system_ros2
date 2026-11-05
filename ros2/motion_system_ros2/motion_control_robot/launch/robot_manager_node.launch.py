@@ -2,6 +2,7 @@ import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -34,6 +35,11 @@ def generate_launch_description():
         default_value=DEFAULT_MOTOR_CONFIG_FILE,
         description='Absolute path to motor_manager YAML.',
     )
+    use_joy_arg = DeclareLaunchArgument(
+        'use_joy',
+        default_value='true',
+        description='Start joy_node and teleop_twist_joy_node.',
+    )
     hw_type_arg = DeclareLaunchArgument(
         'hw_type',
         default_value='DualSense',
@@ -58,6 +64,7 @@ def generate_launch_description():
     return LaunchDescription([
         robot_config_file_arg,
         motor_config_file_arg,
+        use_joy_arg,
         hw_type_arg,
         jog_mode_arg,
         runtime_profile_arg,
@@ -67,12 +74,14 @@ def generate_launch_description():
             executable='joy_node',
             name='joy_node',
             output='screen',
+            condition=IfCondition(LaunchConfiguration('use_joy')),
         ),
         Node(
             package='p9n_node',
             executable='teleop_twist_joy_node_exec',
             name='teleop_twist_joy_node',
             output='screen',
+            condition=IfCondition(LaunchConfiguration('use_joy')),
             parameters=[{
                 'hw_type': LaunchConfiguration('hw_type'),
             }],
