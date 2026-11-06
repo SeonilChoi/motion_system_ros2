@@ -98,6 +98,9 @@ MotorManagerNode::MotorManagerNode(const rclcpp::NodeOptions & options)
     status_publish_rate_hz);
 
   motor_manager_ = std::make_unique<motor_manager::MotorManager>(config_file_, jog_mode);
+  // Torque stays OFF at boot; it is turned ON by an explicit request
+  // (dashboard button or schedule_node).
+  motor_manager_->request_stop();
 
   motor_status_timer_ = this->create_wall_timer(
     status_publish_period,
@@ -228,6 +231,7 @@ void MotorManagerNode::timer_callback()
   msg.position.resize(n);
   msg.velocity.resize(n);
   msg.effort.resize(n);
+  msg.temperature.resize(n);
 
   for (uint8_t i = 0; i < n; i++) {
     msg.controller_index[i] = status[i].controller_index;
@@ -238,6 +242,7 @@ void MotorManagerNode::timer_callback()
     msg.position[i] = status[i].position;
     msg.velocity[i] = status[i].velocity;
     msg.effort[i] = status[i].effort;
+    msg.temperature[i] = status[i].temperature;
   }
 
   motor_status_publisher_->publish(msg);

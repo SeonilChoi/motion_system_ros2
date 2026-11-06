@@ -32,6 +32,10 @@ set(srv_files
   "srv/ListMotorTemplates.srv"
   "srv/GetMotorConfigYaml.srv"
   "srv/SetMotorConfigYaml.srv"
+  "srv/GetSchedule.srv"
+  "srv/SetSchedule.srv"
+  "srv/ListTemperatureLogs.srv"
+  "srv/GetTemperatureLog.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

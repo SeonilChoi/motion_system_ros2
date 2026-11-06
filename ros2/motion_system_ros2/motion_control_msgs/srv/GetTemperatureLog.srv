@@ -1,0 +1,5 @@
+string date            # YYYY-MM-DD
+---
+bool success
+string message
+string csv_text        # raw CSV: timestamp,event,<motor columns...>

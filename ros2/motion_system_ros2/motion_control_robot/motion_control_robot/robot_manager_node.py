@@ -249,16 +249,19 @@ class RobotManagerNode(Node):
         return response
 
     def timer_callback(self):
-        if not self.is_valid_joint_status:
-            self.publish_robot_state()
-            return
-
-        should_publish_motor_command = False
-
+        # Torque requests need no joint status, so they work before the first
+        # all-enabled motor status (torque is OFF at boot).
         if self.joy_buttons[JOY_BUTTON_CROSS] and not self.joy_buttons_prev[JOY_BUTTON_CROSS]:
             self.publish_controller_request(0)
         elif self.joy_buttons[JOY_BUTTON_START] and not self.joy_buttons_prev[JOY_BUTTON_START]:
             self.publish_controller_request(1)
+
+        if not self.is_valid_joint_status:
+            self.joy_buttons_prev = self.joy_buttons.copy()
+            self.publish_robot_state()
+            return
+
+        should_publish_motor_command = False
 
         # Check if the robot is stopped because of the homing is completed
         state_frames = self.robot_manager.get_state_frames()
