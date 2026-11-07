@@ -1,0 +1,5 @@
+---
+bool success
+string message
+string schedule_json   # schedule config as JSON (see motion_control_web schedule_logic.py)
+string timezone        # system local time zone the schedule runs in

@@ -2,6 +2,7 @@ import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -14,12 +15,12 @@ MOTION_SYSTEM_FILES_DIR = os.environ.get(
 DEFAULT_ROBOT_CONFIG_FILE = os.path.join(
     MOTION_SYSTEM_FILES_DIR,
     'robot_manager',
-    'rocking_chair.yaml',
+    'active_robot_manager.yaml',
 )
 DEFAULT_MOTOR_CONFIG_FILE = os.path.join(
     MOTION_SYSTEM_FILES_DIR,
     'motor_manager',
-    'example_ethercat_zeroerr.yaml',
+    'active_motor_manager.yaml',
 )
 
 
@@ -34,6 +35,11 @@ def generate_launch_description():
         default_value=DEFAULT_MOTOR_CONFIG_FILE,
         description='Absolute path to motor_manager YAML.',
     )
+    use_joy_arg = DeclareLaunchArgument(
+        'use_joy',
+        default_value='true',
+        description='Start joy_node and teleop_twist_joy_node.',
+    )
     hw_type_arg = DeclareLaunchArgument(
         'hw_type',
         default_value='DualSense',
@@ -44,23 +50,38 @@ def generate_launch_description():
         default_value='false',
         description='Enable jog commands that use raw encoder targets.',
     )
+    runtime_profile_arg = DeclareLaunchArgument(
+        'runtime_profile',
+        default_value='auto',
+        description='Runtime profile: auto, desktop, or embedded.',
+    )
+    motor_status_publish_rate_hz_arg = DeclareLaunchArgument(
+        'motor_status_publish_rate_hz',
+        default_value='0',
+        description='motor_status rate in Hz; 0 selects it from runtime_profile.',
+    )
 
     return LaunchDescription([
         robot_config_file_arg,
         motor_config_file_arg,
+        use_joy_arg,
         hw_type_arg,
         jog_mode_arg,
+        runtime_profile_arg,
+        motor_status_publish_rate_hz_arg,
         Node(
             package='joy',
             executable='joy_node',
             name='joy_node',
             output='screen',
+            condition=IfCondition(LaunchConfiguration('use_joy')),
         ),
         Node(
             package='p9n_node',
             executable='teleop_twist_joy_node_exec',
             name='teleop_twist_joy_node',
             output='screen',
+            condition=IfCondition(LaunchConfiguration('use_joy')),
             parameters=[{
                 'hw_type': LaunchConfiguration('hw_type'),
             }],
@@ -73,6 +94,11 @@ def generate_launch_description():
             parameters=[{
                 'config_file': LaunchConfiguration('motor_config_file'),
                 'jog_mode': ParameterValue(LaunchConfiguration('jog_mode'), value_type=bool),
+                'runtime_profile': LaunchConfiguration('runtime_profile'),
+                'motor_status_publish_rate_hz': ParameterValue(
+                    LaunchConfiguration('motor_status_publish_rate_hz'),
+                    value_type=int,
+                ),
             }],
         ),
         Node(

@@ -19,6 +19,7 @@ struct motor_frame_t {
     double position{};
     double velocity{};
     double effort{};
+    double temperature{};
 };
 
 }  // namespace motor_interface

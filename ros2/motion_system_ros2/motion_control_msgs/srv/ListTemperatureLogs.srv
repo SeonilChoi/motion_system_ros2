@@ -1,0 +1,4 @@
+---
+bool success
+string message
+string[] dates         # YYYY-MM-DD of available temperature log files, newest first

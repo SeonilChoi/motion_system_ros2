@@ -8,3 +8,4 @@ int32[] encoder
 float64[] position
 float64[] velocity
 float64[] effort
+float64[] temperature

@@ -6,6 +6,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDur
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int8MultiArray
+from std_srvs.srv import Trigger
 from motion_control_msgs.msg import MotorStatus, RobotState
 
 from common_robot_interface.joint_frame import joint_frame_t
@@ -23,6 +24,7 @@ JOY_BUTTON_SQUARE = 3
 
 JOY_BUTTON_PREVIOUS = 4
 JOY_BUTTON_NEXT = 5
+JOY_BUTTON_L1 = 6
 JOY_BUTTON_START = 9
 
 
@@ -90,6 +92,11 @@ class RobotManagerNode(Node):
             self.dt,
             self.timer_callback,
         )
+        self.reload_service = self.create_service(
+            Trigger,
+            '~/reload_config',
+            self.reload_config_callback,
+        )
 
         self.joy_buttons: list[bool] = [False] * JOY_BUTTON_MAX
         self.joy_buttons_prev: list[bool] = [False] * JOY_BUTTON_MAX
@@ -97,6 +104,7 @@ class RobotManagerNode(Node):
             JOY_BUTTON_TRIANGLE: Action.HOME,
             JOY_BUTTON_CIRCLE: Action.MOVE,
             JOY_BUTTON_SQUARE: Action.STOP,
+            JOY_BUTTON_L1: Action.MOVE_TO_START,
         }
 
         self.is_valid_joint_status: bool = False
@@ -190,17 +198,70 @@ class RobotManagerNode(Node):
             request.data[controller_index] = request_value
         self.request_publisher.publish(request)
 
+    def reload_config_callback(self, request, response):
+        # Relies on the single-threaded executor serializing this with
+        # timer/subscription callbacks; add a lock before switching executors.
+        if any(
+            state_frame.state != State.STOPPED
+            for state_frame in self.robot_manager.get_state_frames()
+        ) or any(
+            robot_action.action != Action.STOP
+            for robot_action in self.robot_actions
+        ):
+            response.success = False
+            response.message = 'Robots must be stopped before reloading configuration.'
+            return response
+
+        try:
+            new_manager = RobotManager(self.config_file)
+        except Exception as e:  # noqa: BLE001 - keep the old manager on any failure
+            response.success = False
+            response.message = f'Reload failed: {e}'
+            return response
+
+        self.robot_manager = new_manager
+        self.number_of_robots = new_manager.number_of_robots
+        self.robot_indices = new_manager.robot_indices()
+        self.robot_action_indices = {
+            robot_index: i
+            for i, robot_index in enumerate(self.robot_indices)
+        }
+        if self.selected_robot_index not in self.robot_indices:
+            self.selected_robot_index = self.robot_indices[0]
+        self.robot_actions = [
+            action_frame_t(robot_index=robot_index, action=Action.STOP)
+            for robot_index in self.robot_indices
+        ]
+        if new_manager.dt != self.dt:
+            self.timer.cancel()
+            self.destroy_timer(self.timer)
+            self.dt = new_manager.dt
+            self.timer = self.create_timer(self.dt, self.timer_callback)
+        # The new manager has never seen a joint status; the motor_status
+        # stream re-latches this within one message.
+        self.is_valid_joint_status = False
+
+        response.success = True
+        response.message = (
+            f'Config reloaded: {self.number_of_robots} robot(s), dt={self.dt}.'
+        )
+        self.get_logger().info(response.message)
+        return response
+
     def timer_callback(self):
-        if not self.is_valid_joint_status:
-            self.publish_robot_state()
-            return
-
-        should_publish_motor_command = False
-
+        # Torque requests need no joint status, so they work before the first
+        # all-enabled motor status (torque is OFF at boot).
         if self.joy_buttons[JOY_BUTTON_CROSS] and not self.joy_buttons_prev[JOY_BUTTON_CROSS]:
             self.publish_controller_request(0)
         elif self.joy_buttons[JOY_BUTTON_START] and not self.joy_buttons_prev[JOY_BUTTON_START]:
             self.publish_controller_request(1)
+
+        if not self.is_valid_joint_status:
+            self.joy_buttons_prev = self.joy_buttons.copy()
+            self.publish_robot_state()
+            return
+
+        should_publish_motor_command = False
 
         # Check if the robot is stopped because of the homing is completed
         state_frames = self.robot_manager.get_state_frames()
@@ -233,7 +294,10 @@ class RobotManagerNode(Node):
 
         # Send the action to the robot
         if should_publish_motor_command:
-            commands: joint_frame_t = self.robot_manager.set_action_frames(self.robot_actions)
+            commands, errors = self.robot_manager.set_action_frames(self.robot_actions)
+            for robot_index, message in errors:
+                self.get_logger().error(f'robot {robot_index} action failed, forcing STOP: {message}')
+                self.robot_actions[self.robot_action_indices[robot_index]].action = Action.STOP
             self.publish_motor_command(commands)
 
         self.publish_robot_state()

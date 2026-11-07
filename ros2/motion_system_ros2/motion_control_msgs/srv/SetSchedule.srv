@@ -1,0 +1,4 @@
+string schedule_json   # full schedule config as JSON; validated, then saved to disk
+---
+bool success
+string message

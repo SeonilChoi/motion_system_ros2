@@ -16,10 +16,31 @@ find_package(rosidl_default_generators REQUIRED)
 set(msg_files
   "msg/MotorStatus.msg"
   "msg/RobotState.msg"
+  "msg/RecordingStatus.msg"
+)
+
+set(srv_files
+  "srv/StartRecording.srv"
+  "srv/StopRecording.srv"
+  "srv/ListMotionFiles.srv"
+  "srv/SetActiveMotion.srv"
+  "srv/GetMotionData.srv"
+  "srv/DeleteMotionFile.srv"
+  "srv/RenameMotionFile.srv"
+  "srv/SetMoveDuration.srv"
+  "srv/GetMotorConfig.srv"
+  "srv/ListMotorTemplates.srv"
+  "srv/GetMotorConfigYaml.srv"
+  "srv/SetMotorConfigYaml.srv"
+  "srv/GetSchedule.srv"
+  "srv/SetSchedule.srv"
+  "srv/ListTemperatureLogs.srv"
+  "srv/GetTemperatureLog.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
+  ${srv_files}
   DEPENDENCIES std_msgs
 )
 
